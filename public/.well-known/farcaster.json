@@ -2,15 +2,15 @@
   "frame": {
     "name": "GannetX",
     "version": "1",
-    "iconUrl": "https://gannetx.space/icon2.png",
-    "homeUrl": "https://gannetx.space/farcaster",
-    "imageUrl": "https://gannetx.space/image.png",
+    "iconUrl": "https://gannetx.vercel.app/icon2.png",
+    "homeUrl": "https://gannetx.vercel.app",
+    "imageUrl": "https://gannetx.vercel.app/image.png",
     "buttonTitle": "GM",
-    "splashImageUrl": "https://gannetx.space/icon.png",
+    "splashImageUrl": "https://gannetx.vercel.app/icon.png",
     "splashBackgroundColor": "#1A1A2E",
-    "webhookUrl": "https://gannetx.space/api/webhook",
-    "subtitle": "Your Multichain GM Hub",
-    "description": "The ultimate multi-chain GM hub. Track your daily Web3 check-ins, build streaks, visualize on personalized heatmaps, and climb the leaderboard.v",
+    "webhookUrl": "https://gannetx.vercel.app/api/webhook",
+    "subtitle": "Your MultiChain GM Hub",
+    "description": "The ultimate multi-chain GM hub. Track your daily Web3 check-ins, build streaks, visualize on personalized heatmaps, and climb the leaderboard.",
     "primaryCategory": "social",
     "tags": [
       "social",
@@ -18,14 +18,13 @@
       "community",
       "check-ins"
     ],
-    "heroImageUrl": "https://gannetx.space/image.png",
-    "tagline": "track your onchian activity",
-    "ogTitle": "GannetX - Multichain GM Hub",
-    "ogImageUrl": "https://gannetx.space/image.png"
+    "heroImageUrl": "https://gannetx.vercel.app/image.png",
+    "tagline": "Build, streak, earn ",
+    "ogTitle": "GannetX - Multichain GM Hub"
   },
   "accountAssociation": {
     "header": "eyJmaWQiOjM5MDUyMSwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDQyYjM1RDc2MWRmNWE1NTQ4Nzc1OGZGMEQ3MjM3NzEzNTg4NjI3MzcifQ",
-    "payload": "eyJkb21haW4iOiJnYW5uZXR4LnNwYWNlIn0",
-    "signature": "SzBGDJ6p8x1eRUXisMD8e7IT1z3ydbZe0AqclKVDlMNzBkbKtx66DpdtDxSFGha7+k2pj70gelsqhAquOQ9NPxs="
+    "payload": "eyJkb21haW4iOiJnYW5uZXR4LnZlcmNlbC5hcHAifQ",
+    "signature": "sJ8R6H4LWm0CatiffdGrIBe3igSqr5fDlWeVLvfq8/08USOqdiiCFV9AF1tCHRZdsfGqw3spYOVVCzuKhaXQnxw="
   }
 }
