@@ -22,6 +22,19 @@
     "tagline": "Build, streak, earn ",
     "ogTitle": "GannetX - Multichain GM Hub"
   },
+  "cspSettings": {
+    "connectSrc": [
+      "https://explorer-api.walletconnect.com",
+      "https://*.walletconnect.com",
+      "https://rpc.walletconnect.com",
+      "https://pulse.walletconnect.com",
+      "https://relay.walletconnect.org",
+      "https://*.privy.io",
+      "https://*.warpcast.com",
+      "https://farcaster.xyz",
+      "https://client.farcaster.xyz"
+    ]
+  },
   "accountAssociation": {
     "header": "eyJmaWQiOjM5MDUyMSwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDQyYjM1RDc2MWRmNWE1NTQ4Nzc1OGZGMEQ3MjM3NzEzNTg4NjI3MzcifQ",
     "payload": "eyJkb21haW4iOiJnYW5uZXR4LnZlcmNlbC5hcHAifQ",

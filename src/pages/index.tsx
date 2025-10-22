@@ -3,7 +3,7 @@ import { WagmiProvider, useAccount, useConnect, useDisconnect } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { wagmiConfig } from '@/config/wagmi';
 import { useFarcasterUser } from '@/hooks/useFarcasterContext';
-import sdk from '@farcaster/frame-sdk';
+import sdk from '@farcaster/miniapp-sdk';
 import FixedMultiChainCheckinGrid from '@/components/MultiChainCheckinGrid';
 import HeroStatsSection from '@/components/HeroStatsSection';
 import ActivityHeatmap from '@/components/ActivityHeatmap';

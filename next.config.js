@@ -1,27 +1,27 @@
+// next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  images: {
-    remotePatterns: [
+  async headers() {
+    return [
       {
-        protocol: 'https',
-        hostname: 'api.dicebear.com',
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "connect-src 'self' https://*.walletconnect.com https://*.walletconnect.org https://farcaster.xyz https://client.farcaster.xyz https://*.warpcast.com https://*.privy.io https://*.base.org",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: https: blob:",
+              "font-src 'self' data:",
+              "frame-src 'self' https:",
+            ].join('; '),
+          },
+        ],
       },
-      {
-        protocol: 'https',
-        hostname: 'i.imgur.com',
-      },
-    ],
+    ];
   },
-  webpack: (config) => {
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      net: false,
-      tls: false,
-    };
-    return config;
-  },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
