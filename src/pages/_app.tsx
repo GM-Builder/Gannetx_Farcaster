@@ -4,6 +4,7 @@ import "@/styles/globals.css"
 import { useEffect, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { FarcasterProvider } from '@/hooks/useFarcasterContext'
+import { SuccessAnimationProvider } from '@/components/SuccessAnimationContext'
 
 function FarcasterApp({ Component, pageProps }: AppProps) {
   const [mounted, setMounted] = useState(false)
@@ -95,23 +96,25 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
       </Head>
 
       <FarcasterProvider>
-        <Toaster
-          position="top-center"
-          reverseOrder={false}
-          toastOptions={{
-            className: 'custom-toast',
-            style: {
-              background: 'rgba(255, 255, 255, 0.9)',
-              color: '#1f2937',
-              backdropFilter: 'blur(8px)',
-            },
-            duration: 5000,
-          }}
-        />
-        
-        <main suppressHydrationWarning>
-          <Component {...pageProps} />
-        </main>
+        <SuccessAnimationProvider>
+          <Toaster
+            position="top-center"
+            reverseOrder={false}
+            toastOptions={{
+              className: 'custom-toast',
+              style: {
+                background: 'rgba(255, 255, 255, 0.9)',
+                color: '#1f2937',
+                backdropFilter: 'blur(8px)',
+              },
+              duration: 5000,
+            }}
+          />
+          
+          <main suppressHydrationWarning>
+            <Component {...pageProps} />
+          </main>
+        </SuccessAnimationProvider>
       </FarcasterProvider>
     </>
   )
