@@ -4,7 +4,28 @@ import "@/styles/globals.css"
 import { useEffect, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { FarcasterProvider } from '@/hooks/useFarcasterContext'
-import { sdk } from '@farcaster/miniapp-sdk'
+import { SuccessAnimationProvider } from '@/components/SuccessAnimationContext' // Tambahkan import ini
+import { ErrorBoundary } from 'react-error-boundary'
+
+// Error Fallback Component
+function ErrorFallback({ error }: { error: Error }) {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-red-50">
+      <div className="text-center p-8 max-w-md">
+        <h2 className="text-2xl font-bold text-red-600 mb-4">Oops! Something went wrong</h2>
+        <pre className="text-sm text-left bg-white p-4 rounded overflow-auto">
+          {error.message}
+        </pre>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-4 px-4 py-2 bg-cyan-500 text-white rounded hover:bg-cyan-600"
+        >
+          Reload Page
+        </button>
+      </div>
+    </div>
+  )
+}
 
 function FarcasterApp({ Component, pageProps }: AppProps) {
   const [mounted, setMounted] = useState(false)
@@ -12,32 +33,40 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setMounted(true)
+    const initApp = async () => {
+      setMounted(true)
 
-    // Check if running in Farcaster environment
-    const isFarcasterFrame = typeof window !== 'undefined' && 
-      (window.location.search.includes('miniApp=true') || 
-       window.location.pathname.includes('/farcaster'));
+      // Check if running in Farcaster environment
+      const isFarcasterFrame = typeof window !== 'undefined' && 
+        (window.location.search.includes('miniApp=true') || 
+         window.location.pathname.includes('/farcaster') ||
+         window.parent !== window);
 
-    if (isFarcasterFrame) {
-      console.log('🎯 Initializing Farcaster SDK...');
-      
-      sdk.actions.ready()
-        .then(() => {
-          console.log('✅ SDK ready!');
-          console.log('📱 Context:', sdk.context);
+      if (isFarcasterFrame) {
+        try {
+          console.log('🎯 Initializing Farcaster SDK...');
+          
+          const { sdk } = await import('@farcaster/miniapp-sdk');
+          
+          const context = await sdk.context;
+          console.log('📱 Context received:', context);
+          
+          await sdk.actions.ready();
+          console.log('✅ SDK ready called successfully!');
+          
           setSdkReady(true);
-        })
-        .catch(err => {
+        } catch (err: any) {
           console.error('❌ Failed to initialize SDK:', err);
-          setError(err.message || 'Failed to initialize SDK');
-          // Still set ready to true to allow app to load
+          setError(err?.message || 'Failed to initialize SDK');
           setSdkReady(true);
-        });
-    } else {
-      console.log('ℹ️ Not in Farcaster frame, skipping SDK init');
-      setSdkReady(true);
-    }
+        }
+      } else {
+        console.log('ℹ️ Not in Farcaster frame, skipping SDK init');
+        setSdkReady(true);
+      }
+    };
+
+    initApp();
   }, [])
 
   if (!mounted || !sdkReady) {
@@ -47,7 +76,7 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
           <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Initializing Farcaster...</p>
           {error && (
-            <p className="text-red-500 text-sm mt-2 max-w-md mx-auto">{error}</p>
+            <p className="text-red-500 text-sm mt-2 max-w-md mx-auto px-4">{error}</p>
           )}
         </div>
       </div>
@@ -55,7 +84,7 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
   }
   
   return (
-    <>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
       <Head>
         <title>GannetX Farcaster</title>
         <meta name="description" content="GannetX on Farcaster" />
@@ -64,25 +93,27 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
       </Head>
 
       <FarcasterProvider>
-        <Toaster
-          position="top-center"
-          reverseOrder={false}
-          toastOptions={{
-            className: 'custom-toast',
-            style: {
-              background: 'rgba(255, 255, 255, 0.9)',
-              color: '#1f2937',
-              backdropFilter: 'blur(8px)',
-            },
-            duration: 5000,
-          }}
-        />
-        
-        <main suppressHydrationWarning>
-          <Component {...pageProps} />
-        </main>
+        <SuccessAnimationProvider> {/* Tambahkan provider ini */}
+          <Toaster
+            position="top-center"
+            reverseOrder={false}
+            toastOptions={{
+              className: 'custom-toast',
+              style: {
+                background: 'rgba(255, 255, 255, 0.9)',
+                color: '#1f2937',
+                backdropFilter: 'blur(8px)',
+              },
+              duration: 5000,
+            }}
+          />
+          
+          <main suppressHydrationWarning>
+            <Component {...pageProps} />
+          </main>
+        </SuccessAnimationProvider> {/* Tutup provider ini */}
       </FarcasterProvider>
-    </>
+    </ErrorBoundary>
   )
 }
 

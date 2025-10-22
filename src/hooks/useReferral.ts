@@ -6,7 +6,6 @@ interface Referrer {
   firstReferralTimestamp: any;
   id: string;
   totalReferrals: number;
-  totalRewards: string;
 }
 
 export const useTopReferrers = (limit: number = 10) => {

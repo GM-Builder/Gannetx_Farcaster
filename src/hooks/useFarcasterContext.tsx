@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { sdk } from '@farcaster/miniapp-sdk';
+import sdk from '@farcaster/miniapp-sdk';
 
 interface FarcasterUser {
   fid: number;
@@ -22,7 +22,10 @@ const FarcasterContext = createContext<FarcasterContextType>({
   error: null,
 });
 
-export const useFarcasterUser = () => useContext(FarcasterContext);
+export const useFarcasterUser = () => {
+  const context = useContext(FarcasterContext);
+  return context;
+};
 
 interface FarcasterProviderProps {
   children: ReactNode;
