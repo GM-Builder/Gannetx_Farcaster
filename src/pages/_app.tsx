@@ -9,17 +9,35 @@ import { sdk } from '@farcaster/miniapp-sdk'
 function FarcasterApp({ Component, pageProps }: AppProps) {
   const [mounted, setMounted] = useState(false)
   const [sdkReady, setSdkReady] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
 
-    sdk.actions.ready().then(() => {
-      console.log('✅ SDK ready!');
+    // Check if running in Farcaster environment
+    const isFarcasterFrame = typeof window !== 'undefined' && 
+      (window.location.search.includes('miniApp=true') || 
+       window.location.pathname.includes('/farcaster'));
+
+    if (isFarcasterFrame) {
+      console.log('🎯 Initializing Farcaster SDK...');
+      
+      sdk.actions.ready()
+        .then(() => {
+          console.log('✅ SDK ready!');
+          console.log('📱 Context:', sdk.context);
+          setSdkReady(true);
+        })
+        .catch(err => {
+          console.error('❌ Failed to initialize SDK:', err);
+          setError(err.message || 'Failed to initialize SDK');
+          // Still set ready to true to allow app to load
+          setSdkReady(true);
+        });
+    } else {
+      console.log('ℹ️ Not in Farcaster frame, skipping SDK init');
       setSdkReady(true);
-    }).catch(err => {
-      console.error('❌ Failed to initialize SDK:', err);
-      setSdkReady(true);
-    });
+    }
   }, [])
 
   if (!mounted || !sdkReady) {
@@ -28,6 +46,9 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Initializing Farcaster...</p>
+          {error && (
+            <p className="text-red-500 text-sm mt-2 max-w-md mx-auto">{error}</p>
+          )}
         </div>
       </div>
     );
