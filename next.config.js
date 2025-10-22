@@ -1,38 +1,64 @@
 /** @type {import('next').NextConfig} */
+
+const securityHeaders = [
+  {
+    key: 'Content-Security-Policy',
+    value: [
+      "default-src 'self'",
+      "connect-src 'self' https://*.farcaster.xyz https://farcaster.xyz https://client.farcaster.xyz https://client.warpcast.com https://warpcast.com https://wrpcd.net https://privy.warpcast.com https://auth.privy.io https://rpc.privy.systems https://cloudflareinsights.com https://explorer-api.walletconnect.com https://pulse.walletconnect.org https://mainnet.base.org https://sepolia.base.org https://base.llamarpc.com https://api.studio.thegraph.com",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "frame-src 'self' https://*.farcaster.xyz https://farcaster.xyz",
+      "worker-src 'self' blob:",
+    ].join('; '),
+  },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+  {
+    key: 'X-Frame-Options',
+    value: 'ALLOWALL',
+  },
+];
+
 const nextConfig = {
   reactStrictMode: true,
-  
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'api.dicebear.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.imgur.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.farcaster.xyz',
+      },
+    ],
+  },
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+    };
+    return config;
+  },
   async headers() {
     return [
       {
-        // Apply CSP to all routes
         source: '/:path*',
-        headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https: blob:",
-              "font-src 'self' data:",
-              "connect-src 'self' https://*.walletconnect.com https://*.walletconnect.org https://rpc.walletconnect.com https://relay.walletconnect.org https://pulse.walletconnect.com https://explorer-api.walletconnect.com https://farcaster.xyz https://client.farcaster.xyz https://*.warpcast.com https://warpcast.com https://*.privy.io https://privy.io https://*.base.org https://base.org https://mainnet.base.org https://*.thegraph.com https://api.studio.thegraph.com",
-              "frame-src 'self' https:",
-              "worker-src 'self' blob:",
-            ].join('; '),
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'ALLOWALL',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-        ],
+        headers: securityHeaders,
       },
     ];
   },
-};
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig
