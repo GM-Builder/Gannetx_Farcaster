@@ -237,13 +237,6 @@ export interface QuestStats {
   mintDate: Date;
 }
 
-// ============================================
-// Add to src/types/index.ts
-// ============================================
-
-// ========================================
-// RAW REFERRAL RESPONSE TYPES (from Subgraph)
-// ========================================
 
 export interface RawReferral {
   id: string;

@@ -4,31 +4,29 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { wagmiConfig } from '@/config/wagmi';
 import { useFarcasterUser } from '@/hooks/useFarcasterContext';
 import sdk from '@farcaster/miniapp-sdk';
-import FixedMultiChainCheckinGrid from '@/components/MultiChainCheckinGrid';
-import HeroStatsSection from '@/components/HeroStatsSection';
-import ActivityHeatmap from '@/components/ActivityHeatmap';
-import QuestDashboard from '@/components/QuestDashboard';
-import BottomNav, { TabType } from '@/components/BottomNav';
-import LeaderboardView from '@/components/LeaderboardView';
-import SidebarReferralCard from '@/components/SidebarReferralCard';
+import { performFarcasterCheckin } from '@/utils/farcasterWeb3'; 
 import { motion, AnimatePresence } from 'framer-motion';
-import { ethers } from 'ethers';
 import { 
   FaUser,
   FaWallet,
   FaCopy,
   FaSignOutAlt,
   FaExclamationCircle,
+  FaCheckCircle,
 } from 'react-icons/fa';
 import { useUserStats, useUserCheckins } from '@/hooks/useSubgraph';
 import { useUserChainStats } from '@/hooks/useUserChainStats';
 import { useUserRanking } from '@/hooks/useUserRangking';
 import { SUPPORTED_CHAINS, BASE_CHAIN_ID } from '@/utils/constants';
-import { formatAddress } from '@/utils/web3';
+import { formatAddress } from '@/utils/farcasterWeb3'; 
 import Notification from '@/components/Notification';
+import BottomNav, { TabType } from '@/components/BottomNav';
+import HeroStatsSection from '@/components/HeroStatsSection';
+import ActivityHeatmap from '@/components/ActivityHeatmap';
+import QuestDashboard from '@/components/QuestDashboard';
+import LeaderboardView from '@/components/LeaderboardView';
+import SidebarReferralCard from '@/components/SidebarReferralCard';
 import toast from 'react-hot-toast';
-
-type NetworkTabType = 'all' | 'mainnet' | 'testnet';
 
 const queryClient = new QueryClient();
 
@@ -45,15 +43,10 @@ const FarcasterContent = () => {
   const [error, setError] = useState<string | null>(null);
   const [showSuccessNotification, setShowSuccessNotification] = useState<boolean>(false);
   const [showErrorNotification, setShowErrorNotification] = useState<boolean>(false);
-  const [animationTrigger, setAnimationTrigger] = useState<{
-    chainId: number;
-    chainName: string;
-  } | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [provider, setProvider] = useState<ethers.providers.Web3Provider | null>(null);
-  const [signer, setSigner] = useState<ethers.Signer | null>(null);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
 
-  const chainId = wagmiChainId ? Number(wagmiChainId) : null;
+  const chainId = wagmiChainId ? Number(wagmiChainId) : BASE_CHAIN_ID;
 
   useEffect(() => {
     const autoConnect = async () => {
@@ -65,15 +58,10 @@ const FarcasterContent = () => {
             (window as any).ethereum = ethProvider;
           }
 
-          const farcasterConnector = connectors.find(c => c.name === 'Farcaster Wallet');
-          const injectedConnector = connectors[0];
-          
-          if (farcasterConnector) {
-            console.log('🔌 Connecting with Farcaster connector...');
-            connect({ connector: farcasterConnector });
-          } else if (injectedConnector) {
-            console.log('🔌 Connecting with injected connector...');
-            connect({ connector: injectedConnector });
+          const connector = connectors[0];
+          if (connector) {
+            console.log('🔌 Auto-connecting...');
+            connect({ connector });
           }
         } catch (err) {
           console.error('Failed to auto-connect:', err);
@@ -84,25 +72,6 @@ const FarcasterContent = () => {
     const timer = setTimeout(autoConnect, 1000);
     return () => clearTimeout(timer);
   }, [isReady, isConnected, isConnecting, connect, connectors]);
-
-  useEffect(() => {
-    const initProvider = async () => {
-      if (isConnected && window.ethereum) {
-        try {
-          const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
-          const web3Signer = web3Provider.getSigner();
-          
-          setProvider(web3Provider);
-          setSigner(web3Signer);
-          console.log('✅ Provider and signer ready!');
-        } catch (err) {
-          console.error('❌ Failed to get provider:', err);
-        }
-      }
-    };
-
-    initProvider();
-  }, [isConnected]);
 
   const { data: userCheckins } = useUserCheckins(address || undefined, 365);
   const { data: userStats, loading: userStatsLoading } = useUserStats(address || undefined);
@@ -115,17 +84,28 @@ const FarcasterContent = () => {
   const getAvatarUrl = (addr: string): string => 
     `https://api.dicebear.com/6.x/identicon/svg?seed=${addr}`;
 
-  const handleCheckinSuccess = useCallback((chainId: number, txHash: string): void => {
-    setLastTxHash(txHash);
-    setLastCheckinChainId(chainId);
-    setShowSuccessNotification(true);
+  const handleCheckin = useCallback(async () => {
+    if (!address || isCheckingIn) return;
 
-    const chainConfig = SUPPORTED_CHAINS[chainId];
-    setAnimationTrigger({
-      chainId: chainId,
-      chainName: chainConfig?.chainName || 'Unknown Chain',
-    });
-  }, []);
+    try {
+      setIsCheckingIn(true);
+      toast.loading('Sending transaction...', { id: 'checkin' });
+
+      const txHash = await performFarcasterCheckin(BASE_CHAIN_ID, address);
+
+      toast.success('GM sent successfully!', { id: 'checkin' });
+      setLastTxHash(txHash);
+      setLastCheckinChainId(BASE_CHAIN_ID);
+      setShowSuccessNotification(true);
+    } catch (err: any) {
+      console.error('Checkin error:', err);
+      toast.error(err.message || 'Transaction failed', { id: 'checkin' });
+      setError(err.message);
+      setShowErrorNotification(true);
+    } finally {
+      setIsCheckingIn(false);
+    }
+  }, [address, isCheckingIn]);
 
   const handleCopyAddress = useCallback(() => {
     if (address) {
@@ -184,7 +164,17 @@ const FarcasterContent = () => {
         </div>
       </div>
 
-      
+      {chainId && chainId !== BASE_CHAIN_ID && (
+        <div className="mx-3 mt-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/30 rounded-lg p-3">
+          <div className="flex items-start gap-2">
+            <FaExclamationCircle className="text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-yellow-800 dark:text-yellow-200">
+              <p className="font-semibold mb-1">Base Chain Only</p>
+              <p className="text-xs">Farcaster mini app only supports Base mainnet.</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Notification
         isOpen={showSuccessNotification}
@@ -223,17 +213,36 @@ const FarcasterContent = () => {
                 )}
 
                 {isConnected ? (
-                  <FixedMultiChainCheckinGrid
-                    isConnected={isConnected}
-                    currentChainId={BASE_CHAIN_ID}
-                    address={address}
-                    signer={signer}
-                    provider={provider}
-                    onCheckinSuccess={handleCheckinSuccess}
-                    networkType="mainnet"
-                    triggerAnimation={animationTrigger}
-                    onAnimationComplete={() => setAnimationTrigger(null)}
-                  />
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-4 mb-4">
+                      <img src="/assets/chains/base.png" alt="Base" className="w-12 h-12" />
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Base</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Send your daily GM</p>
+                      </div>
+                      <div className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs font-semibold">
+                        Ready
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleCheckin}
+                      disabled={isCheckingIn}
+                      className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-4 rounded-lg font-bold text-lg hover:from-cyan-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {isCheckingIn ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Sending GM...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FaCheckCircle />
+                          <span>GM on Base</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 ) : isConnecting ? (
                   <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center shadow-lg border border-gray-200 dark:border-gray-700">
                     <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -258,7 +267,6 @@ const FarcasterContent = () => {
                 )}
               </motion.div>
             )}
-
             {activeTab === 'settings' && (
               <motion.div
                 key="settings"
