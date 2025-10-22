@@ -1,0 +1,31 @@
+{
+  "frame": {
+    "name": "GannetX",
+    "version": "1",
+    "iconUrl": "https://gannetx.space/icon2.png",
+    "homeUrl": "https://gannetx.space/farcaster",
+    "imageUrl": "https://gannetx.space/image.png",
+    "buttonTitle": "GM",
+    "splashImageUrl": "https://gannetx.space/icon.png",
+    "splashBackgroundColor": "#1A1A2E",
+    "webhookUrl": "https://gannetx.space/api/webhook",
+    "subtitle": "Your Multichain GM Hub",
+    "description": "The ultimate multi-chain GM hub. Track your daily Web3 check-ins, build streaks, visualize on personalized heatmaps, and climb the leaderboard.v",
+    "primaryCategory": "social",
+    "tags": [
+      "social",
+      "gm",
+      "community",
+      "check-ins"
+    ],
+    "heroImageUrl": "https://gannetx.space/image.png",
+    "tagline": "track your onchian activity",
+    "ogTitle": "GannetX - Multichain GM Hub",
+    "ogImageUrl": "https://gannetx.space/image.png"
+  },
+  "accountAssociation": {
+    "header": "eyJmaWQiOjM5MDUyMSwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDQyYjM1RDc2MWRmNWE1NTQ4Nzc1OGZGMEQ3MjM3NzEzNTg4NjI3MzcifQ",
+    "payload": "eyJkb21haW4iOiJnYW5uZXR4LnNwYWNlIn0",
+    "signature": "SzBGDJ6p8x1eRUXisMD8e7IT1z3ydbZe0AqclKVDlMNzBkbKtx66DpdtDxSFGha7+k2pj70gelsqhAquOQ9NPxs="
+  }
+}
