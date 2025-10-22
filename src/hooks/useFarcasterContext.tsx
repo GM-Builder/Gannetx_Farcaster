@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import sdk from '@farcaster/miniapp-sdk';
 
 interface FarcasterUser {
   fid: number;
@@ -39,26 +38,43 @@ export const FarcasterProvider: React.FC<FarcasterProviderProps> = ({ children }
 
   useEffect(() => {
     const initializeFarcaster = async () => {
+      if (typeof window === 'undefined') {
+        setIsReady(true);
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        console.log('🎯 Getting Farcaster context...');
+        console.log('🎯 FarcasterProvider: Getting context...');
         
-        const context = await sdk.context;
-        console.log('✅ Got context:', context);
+        const { default: sdk } = await import('@farcaster/miniapp-sdk');
         
-        if (context?.user) {
-          setUser({
-            fid: context.user.fid,
-            username: context.user.username || null,
-            displayName: context.user.displayName || null,
-            pfpUrl: context.user.pfpUrl || null,
-          });
+        const context = await Promise.race([
+          sdk.context,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Context timeout in provider')), 8000)
+          )
+        ]);
+        
+        console.log('✅ FarcasterProvider: Got context:', context);
+        
+        if (context && typeof context === 'object' && 'user' in context) {
+          const contextUser = (context as any).user;
+          if (contextUser) {
+            setUser({
+              fid: contextUser.fid,
+              username: contextUser.username || null,
+              displayName: contextUser.displayName || null,
+              pfpUrl: contextUser.pfpUrl || null,
+            });
+          }
         }
 
         setIsReady(true);
-        console.log('✅ Farcaster initialization complete');
+        console.log('✅ FarcasterProvider ready');
         
       } catch (err) {
-        console.error('❌ Farcaster initialization failed:', err);
+        console.error('❌ FarcasterProvider initialization failed:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize');
         setIsReady(true);
       } finally {
@@ -66,7 +82,8 @@ export const FarcasterProvider: React.FC<FarcasterProviderProps> = ({ children }
       }
     };
 
-    initializeFarcaster();
+    const timer = setTimeout(initializeFarcaster, 1000);
+    return () => clearTimeout(timer);
   }, []);
 
   return (

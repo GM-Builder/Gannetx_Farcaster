@@ -4,28 +4,6 @@ import "@/styles/globals.css"
 import { useEffect, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { FarcasterProvider } from '@/hooks/useFarcasterContext'
-import { SuccessAnimationProvider } from '@/components/SuccessAnimationContext' // Tambahkan import ini
-import { ErrorBoundary } from 'react-error-boundary'
-
-// Error Fallback Component
-function ErrorFallback({ error }: { error: Error }) {
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-red-50">
-      <div className="text-center p-8 max-w-md">
-        <h2 className="text-2xl font-bold text-red-600 mb-4">Oops! Something went wrong</h2>
-        <pre className="text-sm text-left bg-white p-4 rounded overflow-auto">
-          {error.message}
-        </pre>
-        <button 
-          onClick={() => window.location.reload()} 
-          className="mt-4 px-4 py-2 bg-cyan-500 text-white rounded hover:bg-cyan-600"
-        >
-          Reload Page
-        </button>
-      </div>
-    </div>
-  )
-}
 
 function FarcasterApp({ Component, pageProps }: AppProps) {
   const [mounted, setMounted] = useState(false)
@@ -34,49 +12,73 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
 
   useEffect(() => {
     const initApp = async () => {
-      setMounted(true)
+      setMounted(true);
 
-      // Check if running in Farcaster environment
-      const isFarcasterFrame = typeof window !== 'undefined' && 
-        (window.location.search.includes('miniApp=true') || 
-         window.location.pathname.includes('/farcaster') ||
-         window.parent !== window);
+      if (typeof window === 'undefined') {
+        setSdkReady(true);
+        return;
+      }
 
-      if (isFarcasterFrame) {
-        try {
-          console.log('🎯 Initializing Farcaster SDK...');
-          
-          const { sdk } = await import('@farcaster/miniapp-sdk');
-          
-          const context = await sdk.context;
-          console.log('📱 Context received:', context);
-          
-          await sdk.actions.ready();
-          console.log('✅ SDK ready called successfully!');
-          
-          setSdkReady(true);
-        } catch (err: any) {
-          console.error('❌ Failed to initialize SDK:', err);
-          setError(err?.message || 'Failed to initialize SDK');
-          setSdkReady(true);
-        }
-      } else {
+      const isFarcasterFrame = 
+        window.location.search.includes('miniApp=true') || 
+        window.location.pathname.includes('/farcaster') ||
+        window.parent !== window;
+
+      console.log('🔍 Environment check:', {
+        search: window.location.search,
+        pathname: window.location.pathname,
+        isFrame: window.parent !== window,
+        isFarcasterFrame
+      });
+
+      if (!isFarcasterFrame) {
         console.log('ℹ️ Not in Farcaster frame, skipping SDK init');
+        setSdkReady(true);
+        return;
+      }
+
+      try {
+        console.log('🎯 [Step 1/3] Loading Farcaster SDK...');
+        const { default: sdk } = await import('@farcaster/miniapp-sdk');
+        
+        console.log('🎯 [Step 2/3] Getting SDK context...');
+        const context = await Promise.race([
+          sdk.context,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Context timeout')), 10000)
+          )
+        ]);
+        console.log('✅ Context received:', context);
+
+        console.log('🎯 [Step 3/3] Calling sdk.actions.ready()...');
+        await sdk.actions.ready();
+        console.log('✅ SDK ready() completed!');
+        
+        setSdkReady(true);
+      } catch (err: any) {
+        console.error('❌ SDK initialization failed:', err);
+        setError(err?.message || 'Failed to initialize Farcaster SDK');
         setSdkReady(true);
       }
     };
 
-    initApp();
-  }, [])
+    const timer = setTimeout(initApp, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!mounted || !sdkReady) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-100 via-white to-cyan-100 dark:from-black dark:via-gray-900 dark:to-cyan-800">
         <div className="text-center">
+          <img src="/logo.png" alt="GannetX" className="h-20 w-auto mx-auto mb-6" />
           <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Initializing Farcaster...</p>
+          <p className="text-gray-600 dark:text-gray-400 font-medium">
+            {error || 'Initializing Farcaster...'}
+          </p>
           {error && (
-            <p className="text-red-500 text-sm mt-2 max-w-md mx-auto px-4">{error}</p>
+            <p className="text-xs text-red-500 mt-2 max-w-md mx-auto">
+              {error}
+            </p>
           )}
         </div>
       </div>
@@ -84,7 +86,7 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
   }
   
   return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
+    <>
       <Head>
         <title>GannetX Farcaster</title>
         <meta name="description" content="GannetX on Farcaster" />
@@ -93,27 +95,25 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
       </Head>
 
       <FarcasterProvider>
-        <SuccessAnimationProvider> {/* Tambahkan provider ini */}
-          <Toaster
-            position="top-center"
-            reverseOrder={false}
-            toastOptions={{
-              className: 'custom-toast',
-              style: {
-                background: 'rgba(255, 255, 255, 0.9)',
-                color: '#1f2937',
-                backdropFilter: 'blur(8px)',
-              },
-              duration: 5000,
-            }}
-          />
-          
-          <main suppressHydrationWarning>
-            <Component {...pageProps} />
-          </main>
-        </SuccessAnimationProvider> {/* Tutup provider ini */}
+        <Toaster
+          position="top-center"
+          reverseOrder={false}
+          toastOptions={{
+            className: 'custom-toast',
+            style: {
+              background: 'rgba(255, 255, 255, 0.9)',
+              color: '#1f2937',
+              backdropFilter: 'blur(8px)',
+            },
+            duration: 5000,
+          }}
+        />
+        
+        <main suppressHydrationWarning>
+          <Component {...pageProps} />
+        </main>
       </FarcasterProvider>
-    </ErrorBoundary>
+    </>
   )
 }
 
