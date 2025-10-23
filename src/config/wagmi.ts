@@ -1,7 +1,7 @@
 // src/config/wagmi.ts
 import { createConfig, http } from 'wagmi';
 import { base, baseSepolia } from 'wagmi/chains';
-import { farcasterFrame } from '@farcaster/miniapp-wagmi-connector';
+import { farcasterFrame } from '@farcaster/frame-wagmi-connector';
 
 export const wagmiConfig = createConfig({
   chains: [base, baseSepolia],

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { FarcasterProvider } from '@/hooks/useFarcasterContext'
 import { SuccessAnimationProvider } from '@/components/SuccessAnimationContext'
-import sdk from '@farcaster/miniapp-sdk';
+import sdk from '@farcaster/frame-sdk';
 
 function FarcasterApp({ Component, pageProps }: AppProps) {
   const [mounted, setMounted] = useState(false)
@@ -22,7 +22,7 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
       }
 
       const isFarcasterFrame =
-        window.location.search.includes('miniApp=true') ||
+        window.location.search.includes('frame=true') ||
         window.location.pathname.includes('/farcaster') ||
         window.parent !== window;
 

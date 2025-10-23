@@ -28,7 +28,7 @@ import toast from 'react-hot-toast';
 import SuccessAnimation from '@/components/SuccessAnimation';
 import { useSuccessAnimation } from '@/components/SuccessAnimationContext';
 import { useUserStats } from '@/hooks/useSubgraph';
-import sdk from '@farcaster/miniapp-sdk';
+import sdk from '@farcaster/frame-sdk';
 
 
 type NetworkType = 'all' | 'mainnet' | 'testnet';
