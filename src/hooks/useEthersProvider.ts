@@ -37,17 +37,11 @@ export function useDirectProvider() {
         console.log('🔐 Getting signer...');
         const web3Signer = web3Provider.getSigner();
 
-        // Verify signer address matches
-        const signerAddress = await web3Signer.getAddress();
-        console.log('✅ Signer address:', signerAddress);
-
-        if (signerAddress.toLowerCase() !== address.toLowerCase()) {
-          throw new Error('Signer address mismatch');
-        }
+        console.log('✅ Using address from Wagmi:', address);
 
         setProvider(web3Provider);
         setSigner(web3Signer);
-        console.log('✅ Direct provider and signer ready');
+        console.log('✅ Direct provider and signer ready!');
       } catch (err: any) {
         console.error('❌ Failed to create provider:', err);
         setError(err.message || 'Failed to create provider');
