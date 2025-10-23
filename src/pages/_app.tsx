@@ -30,7 +30,8 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
         search: window.location.search,
         pathname: window.location.pathname,
         isFrame: window.parent !== window,
-        isFarcasterFrame
+        isFarcasterFrame,
+        userAgent: navigator.userAgent
       });
 
       if (!isFarcasterFrame) {
@@ -40,29 +41,67 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
       }
 
       try {
-        console.log('🎯 [Step 1/3] Checking SDK availability...');
-        
-        // Wait for SDK to be available
+        console.log('🎯 [Step 1/4] Waiting for SDK availability...');
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        console.log('🎯 [Step 2/3] Getting SDK context...');
+        console.log('🎯 [Step 2/4] Getting SDK context...');
         const context = await Promise.race([
           sdk.context,
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Context timeout')), 10000)
+            setTimeout(() => reject(new Error('Context timeout after 10s')), 10000)
           )
-        ]);
-        console.log('✅ Context received:', context);
+        ]) as any;
+        
+        console.log('✅ Context received:', {
+          user: context?.user,
+          location: context?.location
+        });
 
-        console.log('🎯 [Step 3/3] Calling sdk.actions.ready()...');
+        console.log('🎯 [Step 3/4] Calling sdk.actions.ready()...');
         await sdk.actions.ready();
-        console.log('✅ SDK ready() completed successfully!');
+        console.log('✅ SDK ready() completed!');
+        
+        console.log('🎯 [Step 4/4] Getting wallet provider...');
+        try {
+          const ethProvider = await sdk.wallet.ethProvider;
+          
+          if (ethProvider) {
+            console.log('✅ Farcaster wallet provider available');
+            
+            // Inject provider to window if not already there
+            if (!window.ethereum) {
+              (window as any).ethereum = ethProvider;
+              console.log('✅ Injected Farcaster provider to window.ethereum');
+            }
+            
+            // Request accounts to authorize
+            try {
+              const accounts = await ethProvider.request({ 
+                method: 'eth_requestAccounts' 
+              });
+              console.log('✅ Accounts authorized:', accounts);
+            } catch (accountError) {
+              console.warn('⚠️ Could not request accounts:', accountError);
+              // Continue anyway, might work later
+            }
+          } else {
+            console.warn('⚠️ No wallet provider from SDK');
+          }
+        } catch (walletError) {
+          console.warn('⚠️ Failed to get wallet provider:', walletError);
+          // Continue anyway
+        }
+        
+        // Give extra time for everything to settle
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         setSdkReady(true);
+        console.log('✅ Farcaster SDK fully initialized!');
       } catch (err: any) {
         console.error('❌ SDK initialization failed:', err);
         setError(err?.message || 'Failed to initialize Farcaster SDK');
-        // Still set ready to true to allow app to load
+        
+        // Still set ready to allow app to load
         setSdkReady(true);
       }
     };
@@ -75,16 +114,22 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
   if (!mounted || !sdkReady) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-100 via-white to-cyan-100 dark:from-black dark:via-gray-900 dark:to-cyan-800">
-        <div className="text-center">
-          <img src="/logo.png" alt="GannetX" className="h-20 w-auto mx-auto mb-6 animate-pulse" />
+        <div className="text-center px-4">
+          <img 
+            src="/logo.png" 
+            alt="GannetX" 
+            className="h-20 w-auto mx-auto mb-6 animate-pulse" 
+          />
           <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400 font-medium">
             {error ? 'Initialization error, loading anyway...' : 'Initializing Farcaster...'}
           </p>
           {error && (
-            <p className="text-xs text-red-500 mt-2 max-w-md mx-auto">
-              {error}
-            </p>
+            <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 max-w-md mx-auto">
+              <p className="text-xs text-red-500 dark:text-red-400">
+                {error}
+              </p>
+            </div>
           )}
         </div>
       </div>
@@ -96,7 +141,7 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
       <Head>
         <title>GannetX Farcaster</title>
         <meta name="description" content="GannetX on Farcaster" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 

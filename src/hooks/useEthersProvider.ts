@@ -34,14 +34,13 @@ export function useDirectProvider() {
           'any'
         );
 
-        console.log('🔐 Getting signer...');
-        const web3Signer = web3Provider.getSigner();
-
-        console.log('✅ Using address from Wagmi:', address);
+        console.log('🔐 Getting signer for address:', address);
+        // Pass address explicitly to avoid getAddress() call
+        const web3Signer = web3Provider.getSigner(address);
 
         setProvider(web3Provider);
         setSigner(web3Signer);
-        console.log('✅ Direct provider and signer ready!');
+        console.log('✅ Provider and signer ready!');
       } catch (err: any) {
         console.error('❌ Failed to create provider:', err);
         setError(err.message || 'Failed to create provider');
@@ -52,7 +51,9 @@ export function useDirectProvider() {
       }
     };
 
-    initProvider();
+    // Small delay to ensure window.ethereum is ready
+    const timer = setTimeout(initProvider, 500);
+    return () => clearTimeout(timer);
   }, [isConnected, address]);
 
   return { provider, signer, loading, error };
