@@ -1,9 +1,9 @@
 export default async function handler(req, res) {
   try {
-    const response = await fetch("https://auth.farcaster.xyz/nonce", {
+    const response = await fetch("https://auth.farcaster.xyz/api/nonce", {
       method: "GET",
       headers: {
-        "accept": "application/json",
+        accept: "application/json",
       },
     });
 
@@ -16,6 +16,9 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error("❌ Proxy failed:", err);
-    res.status(500).json({ error: "Failed to fetch nonce from Farcaster client", details: err.message });
+    res.status(500).json({
+      error: "Failed to fetch nonce from Farcaster client",
+      details: err.message,
+    });
   }
 }

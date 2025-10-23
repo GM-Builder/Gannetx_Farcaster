@@ -1,18 +1,16 @@
-/** @type {import('next').NextConfig} */
-
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
     value: [
-      "default-src 'self'",
-      "connect-src 'self' https://auth.farcaster.xyz https://*.farcaster.xyz https://farcaster.xyz https://client.farcaster.xyz https://client.warpcast.com https://warpcast.com https://*.wrpcd.net https://privy.warpcast.com https://auth.privy.io https://*.rpc.privy.systems https://cloudflareinsights.com https://explorer-api.walletconnect.com https://*.walletconnect.com https://*.walletconnect.org https://mainnet.base.org https://sepolia.base.org https://base.llamarpc.com https://api.studio.thegraph.com",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
-      "frame-src 'self' https://*.farcaster.xyz https://farcaster.xyz",
-      "worker-src 'self' blob:",
-    ].join('; '),
+      "default-src 'self';",
+      "connect-src 'self' https://auth.farcaster.xyz https://*.farcaster.xyz https://farcaster.xyz https://client.farcaster.xyz https://client.warpcast.com https://warpcast.com https://*.wrpcd.net https://privy.warpcast.com https://auth.privy.io https://*.rpc.privy.systems https://cloudflareinsights.com https://explorer-api.walletconnect.com https://*.walletconnect.com https://*.walletconnect.org https://mainnet.base.org https://sepolia.base.org https://base.llamarpc.com https://api.studio.thegraph.com;",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:;",
+      "style-src 'self' 'unsafe-inline';",
+      "img-src 'self' data: blob: https:;",
+      "font-src 'self' data:;",
+      "frame-src 'self' https://*.farcaster.xyz https://farcaster.xyz;",
+      "worker-src 'self' blob:;",
+    ].join(' '),
   },
   {
     key: 'Referrer-Policy',
@@ -28,18 +26,9 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'api.dicebear.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'i.imgur.com',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.farcaster.xyz',
-      },
+      { protocol: 'https', hostname: 'api.dicebear.com' },
+      { protocol: 'https', hostname: 'i.imgur.com' },
+      { protocol: 'https', hostname: '**.farcaster.xyz' },
     ],
   },
   webpack: (config) => {
@@ -59,6 +48,6 @@ const nextConfig = {
       },
     ];
   },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
