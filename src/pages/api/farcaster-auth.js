@@ -1,7 +1,7 @@
 // pages/api/farcaster-auth.js
-
 export default async function handler(req, res) {
   try {
+    // gunakan endpoint yang diizinkan CSP
     const response = await fetch("https://client.farcaster.xyz/nonce", {
       headers: { "Content-Type": "application/json" },
       cache: "no-store",

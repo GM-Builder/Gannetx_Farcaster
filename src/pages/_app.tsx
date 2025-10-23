@@ -92,24 +92,28 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
 
         console.log('🎯 [Step 5/5] Performing Safe QuickAuth...');
           try {
-            // Try native QuickAuth first
+            // 1️⃣ Coba QuickAuth biasa dulu
             const { token } = await sdk.quickAuth.getToken();
             console.log('✅ QuickAuth token received:', token);
           } catch (authError) {
-            console.warn('⚠️ Direct QuickAuth failed, trying proxy instead:', authError);
+            console.warn('⚠️ Direct QuickAuth failed, trying proxy fallback:', authError);
 
             try {
+              // 2️⃣ Fallback ke proxy
               const res = await fetch('/api/farcaster-auth');
               if (!res.ok) throw new Error(`Proxy failed: ${res.statusText}`);
 
               const nonceData = await res.json();
               console.log('✅ Got nonce via proxy:', nonceData);
-
-              // Optional: process or send to backend if needed
             } catch (proxyError) {
               console.error('❌ Both QuickAuth and proxy failed:', proxyError);
             }
           }
+
+          // Jangan hentikan render walau QuickAuth gagal
+          setSdkReady(true);
+          console.log('✅ Farcaster SDK fully initialized (with or without QuickAuth)');
+
 
 
         // Small delay to let everything settle
