@@ -28,6 +28,8 @@ import toast from 'react-hot-toast';
 import SuccessAnimation from '@/components/SuccessAnimation';
 import { useSuccessAnimation } from '@/components/SuccessAnimationContext';
 import { useUserStats } from '@/hooks/useSubgraph';
+import sdk from '@farcaster/miniapp-sdk';
+
 
 type NetworkType = 'all' | 'mainnet' | 'testnet';
 type FilterType = 'all' | 'available' | 'checked' | 'favorites';
@@ -325,72 +327,61 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
   };
 
   const handleCheckin = async (chainId: number): Promise<void> => {
-    if (!isConnected || !signer || processingChainId !== null) {
-      return;
-    }
-
-    setProcessingChainId(chainId);
-    const toastId = toast.loading('Preparing transaction...');
+    if (processingChainId !== null) return;
 
     try {
-      if (currentChainId !== chainId) {
-        toast.loading('Switching network...', { id: toastId });
-        await switchToChain(chainId);
-        await delay(1000);
-      }
+      setProcessingChainId(chainId);
+      console.log(`🚀 Starting checkin on chain ${chainId}`);
 
-      // ✅ Gunakan provider langsung tanpa getSigner()
-      const updatedProvider = getProvider();
-      if (!updatedProvider) throw new Error("Wallet provider not found.");
+      // ✅ Ambil provider dari window.ethereum (sudah diinject dari _app.tsx)
+      const provider = new ethers.providers.Web3Provider((window as any).ethereum);
+      if (!provider) throw new Error("Ethereum provider not found.");
 
-      // ✅ Hindari .getSigner(), gunakan provider sebagai signer
+      // ✅ Ambil wallet address dari QuickAuth, bukan eth_accounts
+      console.log("🎯 Requesting QuickAuth token...");
+      const { token } = await sdk.quickAuth.getToken();
+
+      // Decode JWT payload (untuk baca FID)
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      console.log("✅ QuickAuth token payload:", payload);
+
+      // Gunakan API Farcaster untuk ambil primary address Ethereum
+      const res = await fetch(
+        `https://api.farcaster.xyz/fc/primary-address?fid=${payload.sub}&protocol=ethereum`
+      );
+      if (!res.ok) throw new Error("Failed to resolve primary address from Farcaster API");
+
+      const { result } = await res.json();
+      const address = result?.address?.address;
+      if (!address) throw new Error("Could not resolve Ethereum address for this user");
+
+      console.log("✅ Resolved wallet address:", address);
+
+      // ✅ Buat contract instance langsung pakai provider
       const contractAddress = getContractAddress(chainId);
       const abi = getChainAbi(chainId);
-      const contract = new ethers.Contract(contractAddress, abi, updatedProvider);
+      const contract = new ethers.Contract(contractAddress, abi, provider.getSigner());
 
-      // ✅ Dapatkan alamat wallet dengan request langsung ke provider
-      const accounts = await updatedProvider.provider.request({ method: 'eth_accounts' });
-      const address = accounts?.[0];
-      if (!address) throw new Error("No authorized wallet account found.");
+      console.log("📡 Sending transaction...");
+      const tx = await contract.sendGM({ value: ethers.utils.parseEther("0.0001") });
+      console.log("✅ Transaction sent:", tx.hash);
 
-      toast.loading('Waiting for your confirmation...', { id: toastId });
+      const receipt = await tx.wait();
+      console.log("✅ Transaction confirmed:", receipt.transactionHash);
 
-      // ✅ Panggil sendGM (atau performCheckin) langsung via provider signer
-      const tx = await contract.sendGM({ value: ethers.utils.parseEther("0.0001") }); // contoh fee
-
+      // Update state success
       setSuccessChainId(chainId);
-      if (onCheckinSuccess) onCheckinSuccess(chainId, tx.hash);
+      if (onCheckinSuccess) onCheckinSuccess(chainId, receipt.transactionHash);
 
-      toast.loading('Transaction sent, waiting for confirmation...', { id: toastId });
-      await tx.wait();
-
-      toast.success('GM Sent successfully!', { id: toastId, duration: 5000 });
-
-      setChainStatusMap(prev => ({
-        ...prev,
-        [chainId]: {
-          ...prev[chainId],
-          canCheckin: false,
-          lastCheckin: Math.floor(Date.now() / 1000),
-          timeUntilNextCheckin: 86400,
-        },
-      }));
     } catch (error: any) {
-      console.error("Failed to perform checkin:", error);
-      let friendlyMessage = "An unknown error occurred. Please try again.";
-      if (error.code === 'ACTION_REJECTED') {
-        friendlyMessage = "Transaction Rejected: You cancelled the request in your wallet.";
-      } else if (error.code === 'INSUFFICIENT_FUNDS') {
-        friendlyMessage = "Insufficient Funds: You don't have enough balance for the transaction fee.";
-      } else if (error.code === 'CALL_EXCEPTION') {
-        friendlyMessage = "Execution Error: The contract could not complete the transaction.";
-      }
-      toast.error(friendlyMessage, { id: toastId, duration: 6000 });
+      console.error("❌ Failed to perform checkin:", error);
+      let msg = error.message || "Unknown error occurred.";
+      toast.error(msg);
     } finally {
       setProcessingChainId(null);
-      setNetworkSwitchingChainId(null);
     }
   };
+
 
 
 
