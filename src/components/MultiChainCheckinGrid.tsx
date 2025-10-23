@@ -328,9 +328,8 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
     if (!isConnected || !signer || processingChainId !== null) {
       return;
     }
-    
-    setProcessingChainId(chainId);
 
+    setProcessingChainId(chainId);
     const toastId = toast.loading('Preparing transaction...');
 
     try {
@@ -339,31 +338,34 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
         await switchToChain(chainId);
         await delay(1000);
       }
-      
+
+      // ✅ Gunakan provider langsung tanpa getSigner()
       const updatedProvider = getProvider();
       if (!updatedProvider) throw new Error("Wallet provider not found.");
-      const updatedSigner = updatedProvider.getSigner();
-      
-      const contract = getContract(updatedSigner, chainId);
-      
+
+      // ✅ Hindari .getSigner(), gunakan provider sebagai signer
+      const contractAddress = getContractAddress(chainId);
+      const abi = getChainAbi(chainId);
+      const contract = new ethers.Contract(contractAddress, abi, updatedProvider);
+
+      // ✅ Dapatkan alamat wallet dengan request langsung ke provider
+      const accounts = await updatedProvider.provider.request({ method: 'eth_accounts' });
+      const address = accounts?.[0];
+      if (!address) throw new Error("No authorized wallet account found.");
+
       toast.loading('Waiting for your confirmation...', { id: toastId });
-      const tx = await performCheckin(contract, chainId);
-      
+
+      // ✅ Panggil sendGM (atau performCheckin) langsung via provider signer
+      const tx = await contract.sendGM({ value: ethers.utils.parseEther("0.0001") }); // contoh fee
+
       setSuccessChainId(chainId);
+      if (onCheckinSuccess) onCheckinSuccess(chainId, tx.hash);
 
-      if (onCheckinSuccess) {
-        onCheckinSuccess(chainId, tx.hash);
-      }
-      
       toast.loading('Transaction sent, waiting for confirmation...', { id: toastId });
-
       await tx.wait();
 
-      toast.success('GM Sent successfully!', {
-        id: toastId, 
-        duration: 5000,
-      });
-      
+      toast.success('GM Sent successfully!', { id: toastId, duration: 5000 });
+
       setChainStatusMap(prev => ({
         ...prev,
         [chainId]: {
@@ -371,14 +373,11 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
           canCheckin: false,
           lastCheckin: Math.floor(Date.now() / 1000),
           timeUntilNextCheckin: 86400,
-        }
+        },
       }));
-
     } catch (error: any) {
       console.error("Failed to perform checkin:", error);
-
       let friendlyMessage = "An unknown error occurred. Please try again.";
-
       if (error.code === 'ACTION_REJECTED') {
         friendlyMessage = "Transaction Rejected: You cancelled the request in your wallet.";
       } else if (error.code === 'INSUFFICIENT_FUNDS') {
@@ -386,17 +385,14 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
       } else if (error.code === 'CALL_EXCEPTION') {
         friendlyMessage = "Execution Error: The contract could not complete the transaction.";
       }
-      
-      toast.error(friendlyMessage, {
-        id: toastId,
-        duration: 6000,
-      });
-      
+      toast.error(friendlyMessage, { id: toastId, duration: 6000 });
     } finally {
       setProcessingChainId(null);
       setNetworkSwitchingChainId(null);
     }
   };
+
+
 
   const formatTime = (seconds: number): string => {
     if (seconds <= 0) return "Available";
