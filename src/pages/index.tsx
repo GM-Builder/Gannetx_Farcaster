@@ -56,19 +56,20 @@ const FarcasterContent = () => {
 
   const chainId = wagmiChainId ? Number(wagmiChainId) : BASE_CHAIN_ID;
 
+  // In index.tsx - this is CORRECT!
   useEffect(() => {
     const autoConnect = async () => {
       if (isReady && !isConnected && !isConnecting) {
         try {
-          const ethProvider = await sdk.wallet.ethProvider;
+          const ethProvider = await sdk.wallet.ethProvider;  // ← Farcaster provider!
           
           if (!window.ethereum && ethProvider) {
-            (window as any).ethereum = ethProvider;
+            (window as any).ethereum = ethProvider;  // ← Inject Farcaster wallet
           }
 
-          const connector = connectors[0];
+          const connector = connectors[0];  // ← Use first (injected) connector
           if (connector) {
-            console.log('🔌 Auto-connecting...');
+            console.log('🔌 Auto-connecting with Farcaster wallet...');
             connect({ connector });
           }
         } catch (err) {
