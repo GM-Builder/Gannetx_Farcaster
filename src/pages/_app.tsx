@@ -90,31 +90,27 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
           console.warn('⚠️ Failed to get wallet provider:', walletError);
         }
 
-        console.log('🎯 [Step 5/5] Performing QuickAuth...');
-        try {
-          const { token } = await sdk.quickAuth.getToken();
-          console.log('✅ QuickAuth token received:', token);
+        console.log('🎯 [Step 5/5] Performing Safe QuickAuth...');
+          try {
+            // Try native QuickAuth first
+            const { token } = await sdk.quickAuth.getToken();
+            console.log('✅ QuickAuth token received:', token);
+          } catch (authError) {
+            console.warn('⚠️ Direct QuickAuth failed, trying proxy instead:', authError);
 
-          // OPTIONAL: Fetch user info from your backend
-          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
-          if (backendUrl) {
-            const res = await fetch(`${backendUrl}/me`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.ok) {
-              const userData = await res.json();
-              console.log('✅ Authenticated user from backend:', userData);
-            } else {
-              console.warn('⚠️ Failed to fetch user info, status:', res.status);
+            try {
+              const res = await fetch('/api/farcaster-auth');
+              if (!res.ok) throw new Error(`Proxy failed: ${res.statusText}`);
+
+              const nonceData = await res.json();
+              console.log('✅ Got nonce via proxy:', nonceData);
+
+              // Optional: process or send to backend if needed
+            } catch (proxyError) {
+              console.error('❌ Both QuickAuth and proxy failed:', proxyError);
             }
-          } else {
-            // No backend? just decode the token locally to read FID
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            console.log('🧩 Decoded QuickAuth payload:', payload);
           }
-        } catch (authError) {
-          console.warn('⚠️ QuickAuth failed or skipped:', authError);
-        }
+
 
         // Small delay to let everything settle
         await new Promise(resolve => setTimeout(resolve, 500));
