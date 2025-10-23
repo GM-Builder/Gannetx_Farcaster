@@ -1,12 +1,13 @@
 import { ethers } from 'ethers';
 import { getChainConfig, getChainAbi, CHECKIN_FEE } from './constants';
+import toast from 'react-hot-toast';
 
 export const performFarcasterCheckin = async (
   chainId: number,
   address: string
 ): Promise<string> => {
   try {
-    console.log('🎯 Starting Farcaster checkin...', { chainId, address });
+    console.log('🎯 Starting Farcaster sendGM...', { chainId, address });
 
     const chainConfig = getChainConfig(chainId);
     if (!chainConfig) {
@@ -20,37 +21,68 @@ export const performFarcasterCheckin = async (
     const provider = new ethers.providers.Web3Provider(window.ethereum as any);
     const signer = provider.getSigner();
 
+    const abi = getChainAbi(chainId);
+    console.log('📝 Contract:', chainConfig.contractAddress);
+
     const contract = new ethers.Contract(
       chainConfig.contractAddress,
-      getChainAbi(chainId),
+      abi,
       signer
     );
-
-    console.log('📝 Contract:', chainConfig.contractAddress);
 
     const feeInWei = ethers.utils.parseEther(CHECKIN_FEE);
     console.log('💰 Fee:', CHECKIN_FEE, 'ETH');
 
-    const gasEstimate = await contract.estimateGas.checkin({
+    // Check if already checked in today
+    try {
+      const lastCheckin = await contract.lastCheckinTime(address);
+      const currentTime = Math.floor(Date.now() / 1000);
+      const dayInSeconds = 86400;
+      
+      if (lastCheckin.toNumber() > 0) {
+        const timeSinceLastCheckin = currentTime - lastCheckin.toNumber();
+        if (timeSinceLastCheckin < dayInSeconds) {
+          throw new Error('Already checked in today. Come back tomorrow!');
+        }
+      }
+    } catch (checkError: any) {
+      if (checkError.message?.includes('Already checked in')) {
+        throw checkError;
+      }
+      console.warn('Could not check last checkin time:', checkError);
+    }
+
+    // Estimate gas
+    let gasLimit;
+    try {
+      const estimated = await contract.estimateGas.sendGM({
+        value: feeInWei,
+        from: address,
+      });
+      gasLimit = estimated.mul(120).div(100);
+      console.log('⛽ Gas estimate:', estimated.toString(), '→', gasLimit.toString());
+    } catch (gasError: any) {
+      console.warn('⚠️ Gas estimation failed:', gasError.message);
+      gasLimit = ethers.BigNumber.from(150000);
+    }
+
+    console.log('📤 Sending sendGM transaction...');
+    const tx = await contract.sendGM({
       value: feeInWei,
-      from: address,
+      gasLimit: gasLimit,
     });
 
-    console.log('⛽ Gas estimate:', gasEstimate.toString());
-
-    const tx = await contract.checkin({
-      value: feeInWei,
-      gasLimit: gasEstimate.mul(120).div(100),
-    });
-
-    console.log('📤 Transaction sent:', tx.hash);
+    console.log('✅ Transaction sent:', tx.hash);
+    toast.loading(`Confirming... ${tx.hash.slice(0, 10)}...`, { id: 'tx-wait' });
 
     const receipt = await tx.wait();
-    console.log('✅ Transaction confirmed:', receipt.transactionHash);
+    console.log('✅ Transaction confirmed!');
+    toast.dismiss('tx-wait');
 
     return receipt.transactionHash;
   } catch (error: any) {
-    console.error('❌ Checkin failed:', error);
+    console.error('❌ sendGM failed:', error);
+    toast.dismiss('tx-wait');
     
     if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
       throw new Error('Transaction rejected by user');
@@ -61,7 +93,16 @@ export const performFarcasterCheckin = async (
     }
     
     if (error.message?.includes('Already checked in')) {
-      throw new Error('Already checked in today');
+      throw error;
+    }
+
+    if (error.message?.includes('Insufficient fee')) {
+      throw new Error('Insufficient fee. Need at least 0.000029 ETH');
+    }
+
+    if (error.message?.includes('execution reverted')) {
+      const reason = error.reason || 'Contract execution failed';
+      throw new Error(reason);
     }
     
     throw new Error(error.message || 'Transaction failed');
