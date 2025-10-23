@@ -3,8 +3,15 @@ import { WagmiProvider, useAccount, useConnect, useDisconnect } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { wagmiConfig } from '@/config/wagmi';
 import { useFarcasterUser } from '@/hooks/useFarcasterContext';
+import { useEthersSigner, useEthersProvider } from '@/hooks/useEthersProvider';
 import sdk from '@farcaster/miniapp-sdk';
-import { performFarcasterCheckin } from '@/utils/farcasterWeb3'; 
+import FixedMultiChainCheckinGrid from '@/components/MultiChainCheckinGrid';
+import HeroStatsSection from '@/components/HeroStatsSection';
+import ActivityHeatmap from '@/components/ActivityHeatmap';
+import QuestDashboard from '@/components/QuestDashboard';
+import BottomNav, { TabType } from '@/components/BottomNav';
+import LeaderboardView from '@/components/LeaderboardView';
+import SidebarReferralCard from '@/components/SidebarReferralCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaUser,
@@ -12,21 +19,16 @@ import {
   FaCopy,
   FaSignOutAlt,
   FaExclamationCircle,
-  FaCheckCircle,
 } from 'react-icons/fa';
 import { useUserStats, useUserCheckins } from '@/hooks/useSubgraph';
 import { useUserChainStats } from '@/hooks/useUserChainStats';
 import { useUserRanking } from '@/hooks/useUserRangking';
 import { SUPPORTED_CHAINS, BASE_CHAIN_ID } from '@/utils/constants';
-import { formatAddress } from '@/utils/farcasterWeb3'; 
+import { formatAddress } from '@/utils/web3';
 import Notification from '@/components/Notification';
-import BottomNav, { TabType } from '@/components/BottomNav';
-import HeroStatsSection from '@/components/HeroStatsSection';
-import ActivityHeatmap from '@/components/ActivityHeatmap';
-import QuestDashboard from '@/components/QuestDashboard';
-import LeaderboardView from '@/components/LeaderboardView';
-import SidebarReferralCard from '@/components/SidebarReferralCard';
 import toast from 'react-hot-toast';
+
+type NetworkTabType = 'all' | 'mainnet' | 'testnet';
 
 const queryClient = new QueryClient();
 
@@ -37,14 +39,20 @@ const FarcasterContent = () => {
   const { connect, connectors, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
 
+  const signer = useEthersSigner({ chainId: BASE_CHAIN_ID });
+  const provider = useEthersProvider({ chainId: BASE_CHAIN_ID });
+
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
   const [lastCheckinChainId, setLastCheckinChainId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessNotification, setShowSuccessNotification] = useState<boolean>(false);
   const [showErrorNotification, setShowErrorNotification] = useState<boolean>(false);
+  const [animationTrigger, setAnimationTrigger] = useState<{
+    chainId: number;
+    chainName: string;
+  } | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [isCheckingIn, setIsCheckingIn] = useState(false);
 
   const chainId = wagmiChainId ? Number(wagmiChainId) : BASE_CHAIN_ID;
 
@@ -84,28 +92,17 @@ const FarcasterContent = () => {
   const getAvatarUrl = (addr: string): string => 
     `https://api.dicebear.com/6.x/identicon/svg?seed=${addr}`;
 
-  const handleCheckin = useCallback(async () => {
-    if (!address || isCheckingIn) return;
+  const handleCheckinSuccess = useCallback((chainId: number, txHash: string): void => {
+    setLastTxHash(txHash);
+    setLastCheckinChainId(chainId);
+    setShowSuccessNotification(true);
 
-    try {
-      setIsCheckingIn(true);
-      toast.loading('Sending transaction...', { id: 'checkin' });
-
-      const txHash = await performFarcasterCheckin(BASE_CHAIN_ID, address);
-
-      toast.success('GM sent successfully!', { id: 'checkin' });
-      setLastTxHash(txHash);
-      setLastCheckinChainId(BASE_CHAIN_ID);
-      setShowSuccessNotification(true);
-    } catch (err: any) {
-      console.error('Checkin error:', err);
-      toast.error(err.message || 'Transaction failed', { id: 'checkin' });
-      setError(err.message);
-      setShowErrorNotification(true);
-    } finally {
-      setIsCheckingIn(false);
-    }
-  }, [address, isCheckingIn]);
+    const chainConfig = SUPPORTED_CHAINS[chainId];
+    setAnimationTrigger({
+      chainId: chainId,
+      chainName: chainConfig?.chainName || 'Unknown Chain',
+    });
+  }, []);
 
   const handleCopyAddress = useCallback(() => {
     if (address) {
@@ -212,37 +209,18 @@ const FarcasterContent = () => {
                   <QuestDashboard address={address} />
                 )}
 
-                {isConnected ? (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center gap-4 mb-4">
-                      <img src="/assets/chains/base.png" alt="Base" className="w-12 h-12" />
-                      <div className="flex-1">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Base</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Send your daily GM</p>
-                      </div>
-                      <div className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs font-semibold">
-                        Ready
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={handleCheckin}
-                      disabled={isCheckingIn}
-                      className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-4 rounded-lg font-bold text-lg hover:from-cyan-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {isCheckingIn ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span>Sending GM...</span>
-                        </>
-                      ) : (
-                        <>
-                          <FaCheckCircle />
-                          <span>GM on Base</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+                {isConnected && provider && signer ? (
+                  <FixedMultiChainCheckinGrid
+                    isConnected={isConnected}
+                    currentChainId={BASE_CHAIN_ID}
+                    address={address || null}
+                    signer={signer}
+                    provider={provider}
+                    onCheckinSuccess={handleCheckinSuccess}
+                    networkType="mainnet"
+                    triggerAnimation={animationTrigger}
+                    onAnimationComplete={() => setAnimationTrigger(null)}
+                  />
                 ) : isConnecting ? (
                   <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center shadow-lg border border-gray-200 dark:border-gray-700">
                     <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -267,6 +245,7 @@ const FarcasterContent = () => {
                 )}
               </motion.div>
             )}
+
             {activeTab === 'settings' && (
               <motion.div
                 key="settings"
@@ -475,6 +454,7 @@ const FarcasterContent = () => {
                 )}
               </motion.div>
             )}
+
           </AnimatePresence>
         </div>
       </div>
