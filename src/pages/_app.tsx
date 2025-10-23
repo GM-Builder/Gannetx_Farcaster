@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { FarcasterProvider } from '@/hooks/useFarcasterContext'
 import { SuccessAnimationProvider } from '@/components/SuccessAnimationContext'
+import sdk from '@farcaster/miniapp-sdk';
 
 function FarcasterApp({ Component, pageProps }: AppProps) {
   const [mounted, setMounted] = useState(false)
@@ -39,8 +40,10 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
       }
 
       try {
-        console.log('🎯 [Step 1/3] Loading Farcaster SDK...');
-        const { default: sdk } = await import('@farcaster/miniapp-sdk');
+        console.log('🎯 [Step 1/3] Checking SDK availability...');
+        
+        // Wait for SDK to be available
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         console.log('🎯 [Step 2/3] Getting SDK context...');
         const context = await Promise.race([
@@ -53,16 +56,18 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
 
         console.log('🎯 [Step 3/3] Calling sdk.actions.ready()...');
         await sdk.actions.ready();
-        console.log('✅ SDK ready() completed!');
+        console.log('✅ SDK ready() completed successfully!');
         
         setSdkReady(true);
       } catch (err: any) {
         console.error('❌ SDK initialization failed:', err);
         setError(err?.message || 'Failed to initialize Farcaster SDK');
+        // Still set ready to true to allow app to load
         setSdkReady(true);
       }
     };
 
+    // Delay to ensure frame is fully loaded
     const timer = setTimeout(initApp, 500);
     return () => clearTimeout(timer);
   }, []);
@@ -71,10 +76,10 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-100 via-white to-cyan-100 dark:from-black dark:via-gray-900 dark:to-cyan-800">
         <div className="text-center">
-          <img src="/logo.png" alt="GannetX" className="h-20 w-auto mx-auto mb-6" />
+          <img src="/logo.png" alt="GannetX" className="h-20 w-auto mx-auto mb-6 animate-pulse" />
           <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400 font-medium">
-            {error || 'Initializing Farcaster...'}
+            {error ? 'Initialization error, loading anyway...' : 'Initializing Farcaster...'}
           </p>
           {error && (
             <p className="text-xs text-red-500 mt-2 max-w-md mx-auto">

@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { wagmiConfig } from '@/config/wagmi';
 import { useFarcasterUser } from '@/hooks/useFarcasterContext';
 import { useEthersSigner, useEthersProvider } from '@/hooks/useEthersProvider';
-import sdk from '@farcaster/miniapp-sdk';
 import FixedMultiChainCheckinGrid from '@/components/MultiChainCheckinGrid';
 import HeroStatsSection from '@/components/HeroStatsSection';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
@@ -27,8 +26,6 @@ import { SUPPORTED_CHAINS, BASE_CHAIN_ID } from '@/utils/constants';
 import { formatAddress } from '@/utils/web3';
 import Notification from '@/components/Notification';
 import toast from 'react-hot-toast';
-
-type NetworkTabType = 'all' | 'mainnet' | 'testnet';
 
 const queryClient = new QueryClient();
 
@@ -56,21 +53,41 @@ const FarcasterContent = () => {
 
   const chainId = wagmiChainId ? Number(wagmiChainId) : BASE_CHAIN_ID;
 
-  // In index.tsx - this is CORRECT!
+  // Smart auto-connect: prefer Farcaster connector
   useEffect(() => {
     const autoConnect = async () => {
       if (isReady && !isConnected && !isConnecting) {
         try {
-          const ethProvider = await sdk.wallet.ethProvider;  // ← Farcaster provider!
+          console.log('🔌 Available connectors:', connectors.map(c => c.name));
           
-          if (!window.ethereum && ethProvider) {
-            (window as any).ethereum = ethProvider;  // ← Inject Farcaster wallet
+          // Check if in Farcaster frame
+          const isFarcasterFrame = 
+            window.location.search.includes('miniApp=true') || 
+            window.parent !== window;
+
+          let targetConnector;
+
+          if (isFarcasterFrame) {
+            // In Farcaster: use Farcaster connector
+            targetConnector = connectors.find(
+              c => c.name === 'Farcaster Wallet' || c.id === 'farcasterFrame'
+            );
+            console.log('🎯 Farcaster frame detected, using Farcaster connector');
+          } else {
+            // Outside Farcaster: use injected (MetaMask/etc)
+            targetConnector = connectors.find(c => c.name === 'Injected');
+            console.log('🌐 Web environment, using injected connector');
           }
 
-          const connector = connectors[0];  // ← Use first (injected) connector
-          if (connector) {
-            console.log('🔌 Auto-connecting with Farcaster wallet...');
-            connect({ connector });
+          // Fallback to first connector
+          if (!targetConnector) {
+            targetConnector = connectors[0];
+            console.log('⚠️ Using fallback connector:', targetConnector?.name);
+          }
+
+          if (targetConnector) {
+            console.log('🔌 Connecting with:', targetConnector.name);
+            await connect({ connector: targetConnector });
           }
         } catch (err) {
           console.error('Failed to auto-connect:', err);
@@ -78,7 +95,7 @@ const FarcasterContent = () => {
       }
     };
 
-    const timer = setTimeout(autoConnect, 1000);
+    const timer = setTimeout(autoConnect, 1500);
     return () => clearTimeout(timer);
   }, [isReady, isConnected, isConnecting, connect, connectors]);
 
@@ -115,9 +132,18 @@ const FarcasterContent = () => {
   }, [address]);
 
   const handleManualConnect = useCallback(() => {
-    const connector = connectors[0];
-    if (connector) {
-      connect({ connector });
+    const isFarcasterFrame = 
+      window.location.search.includes('miniApp=true') || 
+      window.parent !== window;
+
+    const targetConnector = isFarcasterFrame
+      ? connectors.find(c => c.name === 'Farcaster Wallet' || c.id === 'farcasterFrame')
+      : connectors.find(c => c.name === 'Injected');
+
+    if (targetConnector) {
+      connect({ connector: targetConnector });
+    } else if (connectors[0]) {
+      connect({ connector: connectors[0] });
     }
   }, [connect, connectors]);
 
@@ -134,6 +160,7 @@ const FarcasterContent = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-cyan-100 dark:from-black dark:via-gray-900 dark:to-cyan-800">
+      {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20 backdrop-blur-md bg-white/90 dark:bg-gray-900/90">
         <div className="px-3 py-3">
           <div className="flex items-center justify-between">
@@ -225,7 +252,7 @@ const FarcasterContent = () => {
                 ) : isConnecting ? (
                   <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center shadow-lg border border-gray-200 dark:border-gray-700">
                     <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-400">Connecting wallet...</p>
+                    <p className="text-gray-600 dark:text-gray-400">Connecting Farcaster wallet...</p>
                   </div>
                 ) : (
                   <motion.div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl p-6 text-center shadow-lg">
@@ -234,13 +261,13 @@ const FarcasterContent = () => {
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">Connect Wallet</h3>
                     <p className="text-white/80 mb-4 text-sm">
-                      Tap to connect your Farcaster wallet
+                      Connect your Farcaster wallet to start
                     </p>
                     <button
                       onClick={handleManualConnect}
                       className="bg-white text-cyan-600 px-6 py-2.5 rounded-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg"
                     >
-                      Connect Wallet
+                      Connect Farcaster Wallet
                     </button>
                   </motion.div>
                 )}
