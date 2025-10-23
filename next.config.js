@@ -3,7 +3,7 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self';",
-      "connect-src 'self' https://auth.farcaster.xyz https://*.farcaster.xyz https://farcaster.xyz https://client.farcaster.xyz https://client.warpcast.com https://warpcast.com https://*.wrpcd.net https://privy.warpcast.com https://auth.privy.io https://*.rpc.privy.systems https://cloudflareinsights.com https://explorer-api.walletconnect.com https://*.walletconnect.com https://*.walletconnect.org https://mainnet.base.org https://sepolia.base.org https://base.llamarpc.com https://api.studio.thegraph.com;",
+      "connect-src 'self' https://auth.farcaster.xyz https://*.farcaster.xyz https://farcaster.xyz https://client.farcaster.xyz https://client.warpcast.com https://warpcast.com https://*.wrpcd.net https://privy.warpcast.com https://auth.privy.io https://*.rpc.privy.systems https://cloudflareinsights.com https://explorer-api.walletconnect.com https://*.walletconnect.com https://*.walletconnect.org https://mainnet.base.org https://sepolia.base.org https://base.llamarpc.com https://api.studio.thegraph.com",
       "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:;",
       "style-src 'self' 'unsafe-inline';",
       "img-src 'self' data: blob: https:;",
