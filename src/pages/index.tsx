@@ -3,22 +3,13 @@ import { WagmiProvider, useAccount, useConnect, useDisconnect } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { wagmiConfig } from '@/config/wagmi';
 import { useFarcasterUser } from '@/hooks/useFarcasterContext';
-import { useEthersSigner, useEthersProvider } from '@/hooks/useEthersProvider';
+import { useDirectProvider } from '@/hooks/useEthersProvider';
 import FixedMultiChainCheckinGrid from '@/components/MultiChainCheckinGrid';
-import HeroStatsSection from '@/components/HeroStatsSection';
-import ActivityHeatmap from '@/components/ActivityHeatmap';
-import QuestDashboard from '@/components/QuestDashboard';
 import BottomNav, { TabType } from '@/components/BottomNav';
+import QuestDashboard from '@/components/QuestDashboard';
 import LeaderboardView from '@/components/LeaderboardView';
-import SidebarReferralCard from '@/components/SidebarReferralCard';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FaUser,
-  FaWallet,
-  FaCopy,
-  FaSignOutAlt,
-  FaExclamationCircle,
-} from 'react-icons/fa';
+import { FaUser, FaWallet, FaCopy, FaSignOutAlt, FaExclamationCircle } from 'react-icons/fa';
 import { useUserStats, useUserCheckins } from '@/hooks/useSubgraph';
 import { useUserChainStats } from '@/hooks/useUserChainStats';
 import { useUserRanking } from '@/hooks/useUserRangking';
@@ -26,6 +17,9 @@ import { SUPPORTED_CHAINS, BASE_CHAIN_ID } from '@/utils/constants';
 import { formatAddress } from '@/utils/web3';
 import Notification from '@/components/Notification';
 import toast from 'react-hot-toast';
+import HeroStatsSection from '@/components/HeroStatsSection';
+import ActivityHeatmap from '@/components/ActivityHeatmap';
+import SidebarReferralCard from '@/components/SidebarReferralCard';
 
 const queryClient = new QueryClient();
 
@@ -36,8 +30,7 @@ const FarcasterContent = () => {
   const { connect, connectors, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
 
-  const signer = useEthersSigner({ chainId: BASE_CHAIN_ID });
-  const provider = useEthersProvider({ chainId: BASE_CHAIN_ID });
+  const { provider, signer, loading: providerLoading, error: providerError } = useDirectProvider();
 
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
@@ -53,41 +46,30 @@ const FarcasterContent = () => {
 
   const chainId = wagmiChainId ? Number(wagmiChainId) : BASE_CHAIN_ID;
 
-  // Smart auto-connect: prefer Farcaster connector
+  // Auto-connect ONLY Farcaster connector
   useEffect(() => {
     const autoConnect = async () => {
       if (isReady && !isConnected && !isConnecting) {
         try {
-          console.log('🔌 Available connectors:', connectors.map(c => c.name));
+          console.log('🔌 Available connectors:', connectors.map(c => ({
+            name: c.name,
+            id: c.id,
+            type: c.type
+          })));
           
-          // Check if in Farcaster frame
-          const isFarcasterFrame = 
-            window.location.search.includes('miniApp=true') || 
-            window.parent !== window;
+          // ONLY use Farcaster connector
+          const farcasterConnector = connectors.find(
+            c => c.id === 'farcasterFrame' || 
+                 c.type === 'farcasterFrame' ||
+                 c.name?.toLowerCase().includes('farcaster')
+          );
 
-          let targetConnector;
-
-          if (isFarcasterFrame) {
-            // In Farcaster: use Farcaster connector
-            targetConnector = connectors.find(
-              c => c.name === 'Farcaster Wallet' || c.id === 'farcasterFrame'
-            );
-            console.log('🎯 Farcaster frame detected, using Farcaster connector');
+          if (farcasterConnector) {
+            console.log('🎯 Connecting with Farcaster connector:', farcasterConnector.name);
+            await connect({ connector: farcasterConnector });
           } else {
-            // Outside Farcaster: use injected (MetaMask/etc)
-            targetConnector = connectors.find(c => c.name === 'Injected');
-            console.log('🌐 Web environment, using injected connector');
-          }
-
-          // Fallback to first connector
-          if (!targetConnector) {
-            targetConnector = connectors[0];
-            console.log('⚠️ Using fallback connector:', targetConnector?.name);
-          }
-
-          if (targetConnector) {
-            console.log('🔌 Connecting with:', targetConnector.name);
-            await connect({ connector: targetConnector });
+            console.warn('⚠️ No Farcaster connector found!');
+            console.log('Available:', connectors);
           }
         } catch (err) {
           console.error('Failed to auto-connect:', err);
@@ -120,6 +102,10 @@ const FarcasterContent = () => {
       chainId: chainId,
       chainName: chainConfig?.chainName || 'Unknown Chain',
     });
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 2000);
   }, []);
 
   const handleCopyAddress = useCallback(() => {
@@ -132,18 +118,16 @@ const FarcasterContent = () => {
   }, [address]);
 
   const handleManualConnect = useCallback(() => {
-    const isFarcasterFrame = 
-      window.location.search.includes('miniApp=true') || 
-      window.parent !== window;
+    const farcasterConnector = connectors.find(
+      c => c.id === 'farcasterFrame' || 
+           c.type === 'farcasterFrame' ||
+           c.name?.toLowerCase().includes('farcaster')
+    );
 
-    const targetConnector = isFarcasterFrame
-      ? connectors.find(c => c.name === 'Farcaster Wallet' || c.id === 'farcasterFrame')
-      : connectors.find(c => c.name === 'Injected');
-
-    if (targetConnector) {
-      connect({ connector: targetConnector });
-    } else if (connectors[0]) {
-      connect({ connector: connectors[0] });
+    if (farcasterConnector) {
+      connect({ connector: farcasterConnector });
+    } else {
+      toast.error('Farcaster connector not found');
     }
   }, [connect, connectors]);
 
@@ -169,7 +153,6 @@ const FarcasterContent = () => {
               alt="GannetX Logo" 
               className="h-10 w-auto object-contain"
             />
-
             {user && (
               <div className="flex items-center gap-2">
                 {user.pfpUrl ? (
@@ -188,18 +171,6 @@ const FarcasterContent = () => {
           </div>
         </div>
       </div>
-
-      {chainId && chainId !== BASE_CHAIN_ID && (
-        <div className="mx-3 mt-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/30 rounded-lg p-3">
-          <div className="flex items-start gap-2">
-            <FaExclamationCircle className="text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-yellow-800 dark:text-yellow-200">
-              <p className="font-semibold mb-1">Base Chain Only</p>
-              <p className="text-xs">Farcaster mini app only supports Base mainnet.</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       <Notification
         isOpen={showSuccessNotification}
@@ -222,7 +193,6 @@ const FarcasterContent = () => {
 
       <div className="pb-20 md:pb-6">
         <div className="max-w-7xl mx-auto px-3 md:px-4">
-          
           <AnimatePresence mode="wait">
             {activeTab === 'home' && (
               <motion.div
@@ -237,6 +207,12 @@ const FarcasterContent = () => {
                   <QuestDashboard address={address} />
                 )}
 
+                {providerError && (
+                  <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-200 dark:border-red-800">
+                    <p className="text-sm text-red-600 dark:text-red-400">{providerError}</p>
+                  </div>
+                )}
+
                 {isConnected && provider && signer ? (
                   <FixedMultiChainCheckinGrid
                     isConnected={isConnected}
@@ -249,10 +225,12 @@ const FarcasterContent = () => {
                     triggerAnimation={animationTrigger}
                     onAnimationComplete={() => setAnimationTrigger(null)}
                   />
-                ) : isConnecting ? (
+                ) : providerLoading || isConnecting ? (
                   <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center shadow-lg border border-gray-200 dark:border-gray-700">
                     <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-400">Connecting Farcaster wallet...</p>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {providerLoading ? 'Loading provider...' : 'Connecting Farcaster wallet...'}
+                    </p>
                   </div>
                 ) : (
                   <motion.div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl p-6 text-center shadow-lg">
