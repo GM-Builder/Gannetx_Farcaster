@@ -12,6 +12,7 @@ import {
   SUPPORTED_CHAINS, 
   getSupportedChainIds,
   getContractAddress,
+  getChainRpcUrl,
   getChainAbi,
   BASE_CHAIN_ID,
 } from '@/utils/constants';
@@ -345,17 +346,55 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
 
       console.log("✅ Resolved wallet address:", address);
 
-      // ✅ Buat contract instance langsung pakai provider
+      // Read system metrics from a public RPC provider (no signer needed)
       const contractAddress = getContractAddress(chainId);
       const abi = getChainAbi(chainId);
-      const contract = new ethers.Contract(contractAddress, abi, provider.getSigner());
+      const rpcUrl = getChainRpcUrl(chainId);
+      const readProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
 
-  console.log("📡 Sending transaction using performCheckin...");
-  const tx = await performCheckin(contract, chainId);
-  console.log("✅ Transaction sent:", tx.hash);
+      let currentTaxBN;
+      try {
+        const readContract = new ethers.Contract(contractAddress, abi, readProvider);
+        const systemMetrics = await readContract.getSystemMetrics();
+        currentTaxBN = systemMetrics?.currentTax || ethers.utils.parseEther("0.000029");
+      } catch (metricsError) {
+        console.error("Error getting system metrics:", metricsError);
+        currentTaxBN = ethers.utils.parseEther("0.000029");
+      }
 
-  const receipt = await tx.wait();
-  console.log("✅ Transaction confirmed:", receipt.transactionHash);
+      // Encode transaction data for activateBeacon and ask the injected Farcaster provider to send the tx
+      const iface = new ethers.utils.Interface(abi);
+      const data = iface.encodeFunctionData('activateBeacon', []);
+      const txParams: any = {
+        to: contractAddress,
+        data,
+        value: ethers.BigNumber.from(currentTaxBN).toHexString(),
+      };
+
+      const ethProvider = (window as any).ethereum;
+      if (!ethProvider || !ethProvider.request) throw new Error('Injected ethereum provider not available');
+
+      console.log('📡 Sending transaction via injected provider...');
+      const txHash: string = await ethProvider.request({
+        method: 'eth_sendTransaction',
+        params: [txParams]
+      });
+      console.log('✅ Transaction sent (txHash):', txHash);
+
+      // Wait for confirmation using the public RPC provider
+      let receipt = null;
+      const MAX_ATTEMPTS = 60;
+      let attempts = 0;
+      while (!receipt && attempts < MAX_ATTEMPTS) {
+        receipt = await readProvider.getTransactionReceipt(txHash);
+        if (!receipt) {
+          await delay(3000);
+          attempts++;
+        }
+      }
+
+      if (!receipt) throw new Error('Transaction not found after waiting');
+      console.log('✅ Transaction confirmed:', receipt.transactionHash);
 
       // Update state success
       setSuccessChainId(chainId);
