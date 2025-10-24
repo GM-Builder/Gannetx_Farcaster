@@ -7,6 +7,10 @@ export const BASE_SEPOLIA_CHAIN_ID = 84532;
 
 export const DEPLOY_BLOCK = 0;
 
+// Additional supported chain ids (Ink & Soneium)
+export const INK_CHAIN_ID = 57073;
+export const SONEIUM_CHAIN_ID = 1868;
+
 export interface ChainConfig {
   chainId: string;
   chainName: string;
@@ -56,6 +60,38 @@ export const SUPPORTED_CHAINS: Record<number, ChainConfig> = {
     status: "Ready!",
     isTestnet: true,
     abi: GMTestnetABI, 
+  },
+  [SONEIUM_CHAIN_ID]: {
+    chainId: `0x${SONEIUM_CHAIN_ID.toString(16)}`,
+    chainName: "Soneium",
+    nativeCurrency: {
+      name: "Ethereum",
+      symbol: "ETH",
+      decimals: 18,
+    },
+    rpcUrls: [process.env.SONEIUM_MAINNET_RPC_URL || "https://rpc.soneium.org", "https://soneium-mainnet.rpc.caldera.xyz/http"],
+    blockExplorerUrls: ["https://soneium.blocksout.com"],
+    contractAddress: process.env.SONEIUM_MAINNET_CONTRACT_ADDRESS || "0xc636516508f8798c1d5F019A2C73BD7442213D94",
+    logoUrl: "/assets/chains/soneium.png",
+    status: "Ready!",
+    isTestnet: false,
+    abi: GMMainnetABI, 
+  },
+  [INK_CHAIN_ID]: {
+    chainId: `0x${INK_CHAIN_ID.toString(16)}`,
+    chainName: "Ink",
+    nativeCurrency: {
+      name: "Ethereum",
+      symbol: "ETH",
+      decimals: 18,
+    },
+    rpcUrls: [process.env.INK_MAINNET_RPC_URL || "https://rpc-gel.inkonchain.com", "https://rpc-qnd.inkonchain.com"],
+    blockExplorerUrls: ["https://explorer.inkonchain.com"],
+    contractAddress: process.env.INK_MAINNET_CONTRACT_ADDRESS || "0x02a9107Bf30a38fEddA30FB83cC01ff5b44dC935",
+    logoUrl: "/assets/chains/ink.png",
+    status: "Ready!",
+    isTestnet: false,
+    abi: GMMainnetABI, 
   },
 };
 
@@ -145,6 +181,4 @@ export const isReferralSupported = (chainId: number): boolean => {
   return chainId === BASE_CHAIN_ID;
 };
 
-export const INK_CHAIN_ID = 57073;
-export const SONEIUM_CHAIN_ID = 1868;
 export const TEA_SEPOLIA_CHAIN_ID = 10218;
