@@ -83,22 +83,19 @@ declare namespace NodeJS {
     NEXT_PUBLIC_INFURA_KEY: string;
     NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: string;
     
-    // Contract Addresses
-    NEXT_PUBLIC_CONTRACT_ADDRESS: string;
-    BASE_MAINNET_CONTRACT_ADDRESS: string;
-    SONEIUM_MAINNET_CONTRACT_ADDRESS: string;
-    INK_MAINNET_CONTRACT_ADDRESS: string;
-    REFERRAL_CONTRACT_ADDRESS: string;
+  // Contract Addresses
+  NEXT_PUBLIC_CONTRACT_ADDRESS: string;
+  BASE_MAINNET_CONTRACT_ADDRESS: string;
+  REFERRAL_CONTRACT_ADDRESS: string;
     
     // Chain Configuration
     NEXT_PUBLIC_TEA_SEPOLIA_CHAIN_ID: string;
     NEXT_PUBLIC_CHECKIN_FEE: string;
     NEXT_PUBLIC_DEPLOY_BLOCK: string;
     
-    // RPC URLs
-    NEXT_PUBLIC_BASE_MAINNET_RPC_URL: string;
-    NEXT_PUBLIC_INK_MAINNET_RPC_URL: string;
-    NEXT_PUBLIC_SONEIUM_MAINNET_RPC_URL: string;
+  // RPC URLs
+  NEXT_PUBLIC_BASE_MAINNET_RPC_URL: string;
+    
     
     // Subgraph URLs
     NEXT_PUBLIC_REFERRAL_SUBGRAPH_URL: string;

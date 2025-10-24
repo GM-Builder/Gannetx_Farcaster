@@ -38,8 +38,6 @@ export const createSubgraphClient = (chain: ChainName) => {
 // Create clients for all chains
 export const subgraphClients = {
   base: createSubgraphClient('base'),
-  ink: createSubgraphClient('ink'),
-  soneium: createSubgraphClient('soneium'),
 };
 
 export const referralClient = new ApolloClient({
