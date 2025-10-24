@@ -76,18 +76,23 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
           if (ethProvider) {
             console.log('✅ Farcaster wallet provider available');
 
-            // Inject to window if not present
-            if (!window.ethereum) {
+            // If we're running inside the Farcaster frame, prefer the built-in Farcaster
+            // wallet provider *always* so we avoid falling back to external wallets.
+            try {
               (window as any).ethereum = ethProvider;
-              console.log('✅ Injected Farcaster provider to window.ethereum');
+              // mark provider so callers can detect it and avoid calling wallet_switchEthereumChain
+              try { (window as any).ethereum.isFarcaster = true; } catch(e) { /* ignore */ }
+              // also expose on a dedicated property for anyone who wants the original SDK provider
+              (window as any).farcasterEthereum = ethProvider;
+              console.log('✅ Injected Farcaster provider to window.ethereum (overrode external provider if present)');
+            } catch (injectErr) {
+              console.warn('⚠️ Failed to inject Farcaster provider to window.ethereum, will continue without override', injectErr);
             }
 
-            // Request wallet access
+            // Request wallet access (best-effort)
             try {
               const providerAny = ethProvider as any;
-              const accounts = await providerAny.request({
-                method: 'eth_requestAccounts'
-              });
+              const accounts = await providerAny.request({ method: 'eth_requestAccounts' });
               console.log('✅ Accounts authorized:', accounts);
             } catch (accountError) {
               console.warn('⚠️ Could not request accounts:', accountError);

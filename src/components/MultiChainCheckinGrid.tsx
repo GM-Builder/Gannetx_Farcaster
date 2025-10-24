@@ -387,21 +387,34 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
 
       txParams.from = fromAccount;
 
-      // Ensure provider is on the desired chain; request switch if not
+      // Determine if injected provider is Farcaster's built-in provider
+      let isFarcasterProvider = false;
+      try {
+        isFarcasterProvider = !!((window as any).ethereum && (window as any).ethereum.isFarcaster);
+      } catch (e) {
+        isFarcasterProvider = false;
+      }
+
+      // Ensure provider is on the desired chain; request switch only for non-Farcaster providers
       try {
         const currentChainIdHex = await ethProvider.request({ method: 'eth_chainId' });
         const desiredChain = (SUPPORTED_CHAINS as any)[chainId];
         const desiredChainHex = desiredChain?.chainId || `0x${chainId.toString(16)}`;
         if (currentChainIdHex !== desiredChainHex) {
-          try {
-            await ethProvider.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: desiredChainHex }]
-            });
-            console.log('🔁 Switched provider to desired chain', desiredChainHex);
-          } catch (switchErr) {
-            console.warn('Could not switch provider chain (user may need to approve):', switchErr);
-            // continue; user may still approve tx on the provider UI
+          if (isFarcasterProvider) {
+            // Farcaster built-in wallet may handle cross-chain txs; avoid triggering external wallet prompts
+            console.log('ℹ️ Farcaster provider detected — skipping wallet_switchEthereumChain to avoid external wallet prompts');
+          } else {
+            try {
+              await ethProvider.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: desiredChainHex }]
+              });
+              console.log('🔁 Switched provider to desired chain', desiredChainHex);
+            } catch (switchErr) {
+              console.warn('Could not switch provider chain (user may need to approve):', switchErr);
+              // continue; user may still approve tx on the provider UI
+            }
           }
         }
       } catch (cErr) {
