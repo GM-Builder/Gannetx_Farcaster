@@ -19,6 +19,8 @@ import Notification from '@/components/Notification';
 import toast from 'react-hot-toast';
 import HeroStatsSection from '@/components/HeroStatsSection';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
+import Settings from '@/components/Settings';
+import AudioPlayer from '@/components/AudioPlayer';
 import SidebarReferralCard from '@/components/SidebarReferralCard';
 
 const queryClient = new QueryClient();
@@ -254,68 +256,7 @@ const FarcasterContent = () => {
                 transition={{ duration: 0.2 }}
                 className="py-4"
               >
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Network Settings</h3>
-                  
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800 mb-4">
-                    <div className="flex items-center gap-3">
-                      <img src="/assets/chains/base.png" alt="Base" className="w-10 h-10" />
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 dark:text-white">Base Mainnet</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">Chain ID: 8453</p>
-                      </div>
-                      <div className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs font-semibold">
-                        Active
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                      <strong>Note:</strong> Farcaster mini apps only support Base chain.
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      Multi-chain support is not available in Farcaster environment.
-                    </p>
-                  </div>
-                </div>
-
-                {isConnected && address && (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700 mt-4">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Wallet Info</h3>
-                    
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Address</p>
-                        <div 
-                          onClick={handleCopyAddress}
-                          className="flex items-center gap-2 font-mono text-sm bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                        >
-                          <span className="text-gray-800 dark:text-gray-200 flex-1 break-all">
-                            {address}
-                          </span>
-                          <FaCopy className={`text-xs flex-shrink-0 ${copySuccess ? 'text-green-500' : 'text-gray-400'}`} />
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Network</p>
-                        <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg">
-                          <img src="/assets/chains/base.png" alt="Base" className="w-5 h-5" />
-                          <span className="text-sm text-gray-800 dark:text-gray-200">Base</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => disconnect()}
-                      className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                    >
-                      <FaSignOutAlt />
-                      <span className="font-medium">Disconnect Wallet</span>
-                    </button>
-                  </div>
-                )}
+                <Settings />
               </motion.div>
             )}
 
@@ -414,13 +355,12 @@ const FarcasterContent = () => {
                         loading={chainStatsLoading || userStatsLoading || rankingLoading}
                       />
 
-                      {userStats && userCheckins && (
-                        <ActivityHeatmap
-                          checkins={userCheckins}
-                          currentStreak={userStats.currentStreak}
-                          maxStreak={userStats.maxStreak}
-                        />
-                      )}
+                      {/* Heatmap — render with fallbacks so profile always shows the section */}
+                      <ActivityHeatmap
+                        checkins={userCheckins || []}
+                        currentStreak={userStats?.currentStreak || 0}
+                        maxStreak={userStats?.maxStreak || 0}
+                      />
 
                       <SidebarReferralCard
                         canUseReferral={true}
@@ -457,6 +397,9 @@ const FarcasterContent = () => {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Global audio player (non-blocking) */}
+      <AudioPlayer />
 
       <BottomNav 
         activeTab={activeTab} 
