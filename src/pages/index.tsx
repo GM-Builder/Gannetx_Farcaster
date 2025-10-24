@@ -51,25 +51,18 @@ const FarcasterContent = () => {
     const autoConnect = async () => {
       if (isReady && !isConnected && !isConnecting) {
         try {
-          console.log('🔌 Available connectors:', connectors.map(c => ({
-            name: c.name,
-            id: c.id,
-            type: c.type
-          })));
-          
-          // ONLY use Farcaster connector
-          const farcasterConnector = connectors.find(
-            c => c.id === 'farcasterFrame' || 
-                 c.type === 'farcasterFrame' ||
-                 c.name?.toLowerCase().includes('farcaster')
-          );
+          console.log('🔌 Available connectors:', connectors.map(c => ({ name: c.name, id: c.id, type: c.type })));
+
+          // Prefer the miniapp connector id
+          const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp') ||
+                                    connectors.find(c => c.id === 'farcasterFrame') ||
+                                    connectors.find(c => c.name?.toLowerCase().includes('farcaster'));
 
           if (farcasterConnector) {
-            console.log('🎯 Connecting with Farcaster connector:', farcasterConnector.name);
+            console.log('🎯 Auto-connecting with Farcaster connector:', farcasterConnector.name, farcasterConnector.id);
             await connect({ connector: farcasterConnector });
           } else {
             console.warn('⚠️ No Farcaster connector found!');
-            console.log('Available:', connectors);
           }
         } catch (err) {
           console.error('Failed to auto-connect:', err);
@@ -77,7 +70,7 @@ const FarcasterContent = () => {
       }
     };
 
-    const timer = setTimeout(autoConnect, 1500);
+    const timer = setTimeout(autoConnect, 1200);
     return () => clearTimeout(timer);
   }, [isReady, isConnected, isConnecting, connect, connectors]);
 
