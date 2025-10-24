@@ -387,6 +387,48 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
 
       txParams.from = fromAccount;
 
+      // Ensure provider is on the desired chain; request switch if not
+      try {
+        const currentChainIdHex = await ethProvider.request({ method: 'eth_chainId' });
+        const desiredChain = (SUPPORTED_CHAINS as any)[chainId];
+        const desiredChainHex = desiredChain?.chainId || `0x${chainId.toString(16)}`;
+        if (currentChainIdHex !== desiredChainHex) {
+          try {
+            await ethProvider.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: desiredChainHex }]
+            });
+            console.log('🔁 Switched provider to desired chain', desiredChainHex);
+          } catch (switchErr) {
+            console.warn('Could not switch provider chain (user may need to approve):', switchErr);
+            // continue; user may still approve tx on the provider UI
+          }
+        }
+      } catch (cErr) {
+        console.warn('Could not determine provider chainId:', cErr);
+      }
+
+      // Estimate gas using public read provider to avoid provider.getAddress limitations
+      let gasLimitHex: string | undefined;
+      try {
+        const estimate = await readProvider.estimateGas({ to: contractAddress, data, value: ethers.BigNumber.from(currentTaxBN) });
+        const gasLimit = estimate.mul(120).div(100); // 1.2x
+        gasLimitHex = gasLimit.toHexString();
+      } catch (estErr) {
+        console.warn('Gas estimation failed via read provider, falling back to default gas limit:', estErr);
+        gasLimitHex = ethers.BigNumber.from(150000).toHexString();
+      }
+
+      // Attach gas and chainId to tx params
+      try {
+        const desiredChain = (SUPPORTED_CHAINS as any)[chainId];
+        const desiredChainHex = desiredChain?.chainId || `0x${chainId.toString(16)}`;
+        txParams.gas = gasLimitHex;
+        txParams.chainId = desiredChainHex;
+      } catch (attachErr) {
+        console.warn('Unable to attach gas/chainId to tx params:', attachErr);
+      }
+
       console.log('📡 Sending transaction via injected provider...');
       const txHash: string = await ethProvider.request({
         method: 'eth_sendTransaction',
@@ -421,9 +463,6 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
       setProcessingChainId(null);
     }
   };
-
-
-
 
   const formatTime = (seconds: number): string => {
     if (seconds <= 0) return "Available";

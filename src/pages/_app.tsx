@@ -58,12 +58,20 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
         });
 
         console.log('🎯 [Step 3/5] Calling sdk.actions.ready()...');
-        await sdk.actions.ready();
+        // don't block forever if ready() hangs in some embedded environments
+        await Promise.race([
+          sdk.actions.ready(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('sdk.actions.ready() timeout after 8s')), 8000))
+        ]);
         console.log('✅ SDK ready() completed!');
 
         console.log('🎯 [Step 4/5] Getting wallet provider...');
         try {
-          const ethProvider = await sdk.wallet.ethProvider;
+          // also don't block indefinitely getting the provider
+          const ethProvider = await Promise.race([
+            sdk.wallet.ethProvider,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('ethProvider timeout after 5s')), 5000))
+          ]);
 
           if (ethProvider) {
             console.log('✅ Farcaster wallet provider available');
@@ -76,7 +84,8 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
 
             // Request wallet access
             try {
-              const accounts = await ethProvider.request({
+              const providerAny = ethProvider as any;
+              const accounts = await providerAny.request({
                 method: 'eth_requestAccounts'
               });
               console.log('✅ Accounts authorized:', accounts);
@@ -130,7 +139,18 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
 
     // Delay to ensure frame fully loaded
     const timer = setTimeout(initApp, 500);
-    return () => clearTimeout(timer);
+
+    // Safety timeout: if SDK init doesn't finish in X ms, stop blocking the app
+    const safetyTimer = setTimeout(() => {
+      console.warn('⏱️ Farcaster SDK init safety timeout reached — continuing without blocking UI');
+      setSdkReady(true);
+      setError((prev) => prev ?? 'Farcaster SDK init timed out');
+    }, 15000);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(safetyTimer);
+    };
   }, []);
 
 
