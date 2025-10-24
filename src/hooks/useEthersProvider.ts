@@ -19,8 +19,26 @@ export function useDirectProvider() {
         return;
       }
 
-      if (typeof window === 'undefined' || !window.ethereum) {
+      if (typeof window === 'undefined') {
         setError('No ethereum provider found');
+        return;
+      }
+
+      // If ethereum is not yet injected (miniapp provider may inject shortly), wait briefly and poll
+      if (!window.ethereum) {
+        setError(null);
+        let attempts = 0;
+        const maxAttempts = 10;
+        const interval = setInterval(() => {
+          attempts++;
+          if ((window as any).ethereum) {
+            clearInterval(interval);
+            initProvider();
+          } else if (attempts >= maxAttempts) {
+            clearInterval(interval);
+            setError('No ethereum provider found');
+          }
+        }, 300);
         return;
       }
 
