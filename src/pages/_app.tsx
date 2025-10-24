@@ -13,6 +13,9 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Simpler, non-blocking initialization pattern:
+    // - mark mounted immediately so UI can render
+    // - only wait briefly for sdk.actions.ready and provider; don't block on QuickAuth
     const initApp = async () => {
       setMounted(true);
 
@@ -26,126 +29,75 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
         window.location.pathname.includes('/farcaster') ||
         window.parent !== window;
 
-      console.log('🔍 Environment check:', {
-        search: window.location.search,
-        pathname: window.location.pathname,
-        isFrame: window.parent !== window,
-        isFarcasterFrame,
-        userAgent: navigator.userAgent
-      });
+      console.log('🔍 Environment check:', { isFarcasterFrame, pathname: window.location.pathname, userAgent: navigator.userAgent });
 
       if (!isFarcasterFrame) {
-        console.log('ℹ️ Not in Farcaster frame, skipping SDK init');
         setSdkReady(true);
         return;
       }
 
       try {
-        console.log('🎯 [Step 1/5] Waiting for SDK availability...');
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        console.log('🎯 [Step 2/5] Getting SDK context...');
-        const context = await Promise.race([
-          sdk.context,
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Context timeout after 10s')), 10000)
-          )
-        ]) as any;
-
-        console.log('✅ Context received:', {
-          user: context?.user,
-          location: context?.location
-        });
-
-        console.log('🎯 [Step 3/5] Calling sdk.actions.ready()...');
-        // don't block forever if ready() hangs in some embedded environments
-        await Promise.race([
-          sdk.actions.ready(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('sdk.actions.ready() timeout after 8s')), 8000))
-        ]);
-        console.log('✅ SDK ready() completed!');
-
-        console.log('🎯 [Step 4/5] Getting wallet provider...');
+        // Wait briefly for sdk.actions.ready()
         try {
-          // also don't block indefinitely getting the provider
+          await Promise.race([
+            sdk.actions.ready(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('sdk.actions.ready() timeout after 5s')), 5000))
+          ]);
+          console.log('✅ sdk.actions.ready() completed');
+        } catch (readyErr) {
+          console.warn('⚠️ sdk.actions.ready() did not complete quickly:', readyErr);
+        }
+
+        // Try to get provider but don't block app render if it takes time
+        try {
           const ethProvider = await Promise.race([
             sdk.wallet.ethProvider,
-            new Promise((_, reject) => setTimeout(() => reject(new Error('ethProvider timeout after 5s')), 5000))
+            new Promise((_, reject) => setTimeout(() => reject(new Error('ethProvider timeout after 3s')), 3000))
           ]);
 
           if (ethProvider) {
-            console.log('✅ Farcaster wallet provider available');
-
-            // If we're running inside the Farcaster frame, prefer the built-in Farcaster
-            // wallet provider *always* so we avoid falling back to external wallets.
             try {
               (window as any).ethereum = ethProvider;
-              // mark provider so callers can detect it and avoid calling wallet_switchEthereumChain
-              try { (window as any).ethereum.isFarcaster = true; } catch(e) { /* ignore */ }
-              // also expose on a dedicated property for anyone who wants the original SDK provider
+              try { (window as any).ethereum.isFarcaster = true; } catch(e) {}
               (window as any).farcasterEthereum = ethProvider;
-              console.log('✅ Injected Farcaster provider to window.ethereum (overrode external provider if present)');
+              console.log('✅ Injected Farcaster provider to window.ethereum');
             } catch (injectErr) {
-              console.warn('⚠️ Failed to inject Farcaster provider to window.ethereum, will continue without override', injectErr);
+              console.warn('⚠️ Failed to inject Farcaster provider:', injectErr);
             }
-
-            // Request wallet access (best-effort)
-            try {
-              const providerAny = ethProvider as any;
-              const accounts = await providerAny.request({ method: 'eth_requestAccounts' });
-              console.log('✅ Accounts authorized:', accounts);
-            } catch (accountError) {
-              console.warn('⚠️ Could not request accounts:', accountError);
-            }
-          } else {
-            console.warn('⚠️ No wallet provider from SDK');
           }
-        } catch (walletError) {
-          console.warn('⚠️ Failed to get wallet provider:', walletError);
+        } catch (provErr) {
+          console.warn('⚠️ ethProvider not available quickly:', provErr);
         }
 
-        console.log('🎯 [Step 5/5] Performing Safe QuickAuth...');
+        // Kick off QuickAuth in background (do not await) to avoid blocking splash
+        (async () => {
           try {
-            // 1️⃣ Coba QuickAuth biasa dulu
-            const { token } = await sdk.quickAuth.getToken();
-            console.log('✅ QuickAuth token received:', token);
-          } catch (authError) {
-            console.warn('⚠️ Direct QuickAuth failed, trying proxy fallback:', authError);
-
-            try {
-              // 2️⃣ Fallback ke proxy
-              const res = await fetch('/api/farcaster-auth');
-              if (!res.ok) throw new Error(`Proxy failed: ${res.statusText}`);
-
-              const nonceData = await res.json();
-              console.log('✅ Got nonce via proxy:', nonceData);
-            } catch (proxyError) {
-              console.error('❌ Both QuickAuth and proxy failed:', proxyError);
+            const quickAuthPromise = sdk.quickAuth?.getToken?.();
+            if (quickAuthPromise) {
+              const { token } = await Promise.race([
+                quickAuthPromise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('quickAuth timeout after 4s')), 4000))
+              ] as any);
+              console.log('✅ QuickAuth token (background):', typeof token === 'string' ? 'ok' : token);
             }
+          } catch (qaErr) {
+            console.warn('⚠️ QuickAuth background attempt failed:', qaErr);
           }
+        })();
 
-          // Jangan hentikan render walau QuickAuth gagal
-          setSdkReady(true);
-          console.log('✅ Farcaster SDK fully initialized (with or without QuickAuth)');
-
-
-
-        // Small delay to let everything settle
-        await new Promise(resolve => setTimeout(resolve, 500));
-
+        // Allow UI to continue immediately
         setSdkReady(true);
-        console.log('✅ Farcaster SDK fully initialized with QuickAuth!');
       } catch (err: any) {
-        console.error('❌ SDK initialization failed:', err);
+        console.error('❌ SDK initialization unexpected error:', err);
         setError(err?.message || 'Failed to initialize Farcaster SDK');
         setSdkReady(true);
       }
     };
 
-    // Delay to ensure frame fully loaded
-    const timer = setTimeout(initApp, 500);
+    // Start init immediately (no long delay)
+    const timer = setTimeout(initApp, 0);
 
-    // Safety timeout: if SDK init doesn't finish in X ms, stop blocking the app
+    // Safety timeout: if SDK init doesn't finish in X ms, ensure app continues
     const safetyTimer = setTimeout(() => {
       console.warn('⏱️ Farcaster SDK init safety timeout reached — continuing without blocking UI');
       setSdkReady(true);
