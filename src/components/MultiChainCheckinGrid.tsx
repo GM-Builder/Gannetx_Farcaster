@@ -374,6 +374,19 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
       const ethProvider = (window as any).ethereum;
       if (!ethProvider || !ethProvider.request) throw new Error('Injected ethereum provider not available');
 
+      // Ensure `from` is provided — try provider accounts first, fallback to Farcaster primary address
+      let fromAccount: string | undefined;
+      try {
+        const accounts: string[] = await ethProvider.request({ method: 'eth_accounts' });
+        if (accounts && accounts.length > 0) fromAccount = accounts[0];
+      } catch (acctErr) {
+        console.warn('Could not read eth_accounts from provider, will fallback to Farcaster primary address', acctErr);
+      }
+      if (!fromAccount && address) fromAccount = address;
+      if (!fromAccount) throw new Error('No from account available for transaction');
+
+      txParams.from = fromAccount;
+
       console.log('📡 Sending transaction via injected provider...');
       const txHash: string = await ethProvider.request({
         method: 'eth_sendTransaction',
