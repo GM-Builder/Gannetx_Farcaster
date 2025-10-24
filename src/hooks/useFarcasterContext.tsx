@@ -47,7 +47,7 @@ export const FarcasterProvider: React.FC<FarcasterProviderProps> = ({ children }
       try {
         console.log('🎯 FarcasterProvider: Getting context...');
         
-        const { default: sdk } = await import('@farcaster/frame-sdk');
+  const { default: sdk } = await import('@farcaster/miniapp-sdk');
         
         const context = await Promise.race([
           sdk.context,

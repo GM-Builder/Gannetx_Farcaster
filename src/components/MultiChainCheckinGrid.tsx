@@ -28,7 +28,7 @@ import toast from 'react-hot-toast';
 import SuccessAnimation from '@/components/SuccessAnimation';
 import { useSuccessAnimation } from '@/components/SuccessAnimationContext';
 import { useUserStats } from '@/hooks/useSubgraph';
-import sdk from '@farcaster/frame-sdk';
+import sdk from '@farcaster/miniapp-sdk';
 
 
 type NetworkType = 'all' | 'mainnet' | 'testnet';
@@ -350,12 +350,12 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
       const abi = getChainAbi(chainId);
       const contract = new ethers.Contract(contractAddress, abi, provider.getSigner());
 
-      console.log("📡 Sending transaction...");
-      const tx = await contract.sendGM({ value: ethers.utils.parseEther("0.0001") });
-      console.log("✅ Transaction sent:", tx.hash);
+  console.log("📡 Sending transaction using performCheckin...");
+  const tx = await performCheckin(contract, chainId);
+  console.log("✅ Transaction sent:", tx.hash);
 
-      const receipt = await tx.wait();
-      console.log("✅ Transaction confirmed:", receipt.transactionHash);
+  const receipt = await tx.wait();
+  console.log("✅ Transaction confirmed:", receipt.transactionHash);
 
       // Update state success
       setSuccessChainId(chainId);

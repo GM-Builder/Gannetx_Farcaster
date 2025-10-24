@@ -28,7 +28,7 @@ declare global {
 }
 
 // Augment module declarations
-declare module '@farcaster/frame-sdk' {
+declare module '@farcaster/miniapp-sdk' {
   export interface FrameContext {
     user?: {
       fid: number;
