@@ -264,41 +264,29 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
               return { chainId, status: statusMap[chainId] };
             }
             
-            const provider = new ethers.providers.JsonRpcProvider(SUPPORTED_CHAINS[chainId].rpcUrls[0]);
-            const contract = new ethers.Contract(contractAddress, abi, provider);
-            
-            let canActivate = true;
-            let lastBeacon = null;
-            let timeRemaining = 0;
-            
+            // Use server-side endpoint to avoid CORS issues with public RPC nodes
             try {
-              canActivate = await contract.canActivateToday(address);
-              
-              try {
-                const metrics = await contract.getNavigatorMetrics(address);
-                lastBeacon = metrics.lastBeacon.toNumber() || null;
-                
-                if (!canActivate) {
-                  const nextResetTime = metrics.nextResetTime.toNumber();
-                  const currentTime = Math.floor(Date.now() / 1000);
-                  timeRemaining = Math.max(0, nextResetTime - currentTime);
-                }
-              } catch (metricsError) {
-                console.warn(`Couldn't get detailed metrics for chain ${chainId}:`, metricsError);
+              const resp = await fetch('/api/chain-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chainId, address })
+              });
+
+              if (!resp.ok) {
+                console.warn(`Server chain-status error for ${chainId}: ${resp.status}`);
+                return { chainId, status: statusMap[chainId] };
               }
-            } catch (error) {
-              console.error(`Error checking status for chain ${chainId}:`, error);
+
+              const data = await resp.json();
+              if (data && data.status) {
+                return { chainId, status: data.status };
+              }
+
+              return { chainId, status: statusMap[chainId] };
+            } catch (err) {
+              console.error(`Error fetching chain status from server for ${chainId}:`, err);
               return { chainId, status: statusMap[chainId] };
             }
-            
-            return {
-              chainId,
-              status: {
-                canCheckin: canActivate,
-                lastCheckin: lastBeacon,
-                timeUntilNextCheckin: timeRemaining
-              }
-            };
           } catch (error) {
             console.error(`Error checking status for chain ${chainId}:`, error);
             return { chainId, status: statusMap[chainId] };
