@@ -30,6 +30,7 @@ import SuccessAnimation from '@/components/SuccessAnimation';
 import { useSuccessAnimation } from '@/components/SuccessAnimationContext';
 import { useUserStats } from '@/hooks/useSubgraph';
 import sdk from '@farcaster/miniapp-sdk';
+import { useFarcasterMiniApp } from '@/components/providers/FarcasterMiniAppProvider';
 
 
 type NetworkType = 'all' | 'mainnet' | 'testnet';
@@ -113,6 +114,7 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
   
   const { soundEnabled } = useSuccessAnimation();
   const { data: userStats } = useUserStats(address || undefined);
+  const miniApp = useFarcasterMiniApp();
   const filterMenuRef = useRef<HTMLDivElement>(null);
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
@@ -393,6 +395,23 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
         isFarcasterProvider = !!((window as any).ethereum && (window as any).ethereum.isFarcaster);
       } catch (e) {
         isFarcasterProvider = false;
+      }
+
+      // If running inside Farcaster miniapp, run a preflight capability/chain check
+      try {
+        const caip2 = `eip155:${chainId}`;
+        // debug log
+        console.log('🔍 MiniApp supportedChains (preflight):', miniApp.supportedChains);
+        if (isFarcasterProvider && !miniApp.supportsChain(caip2)) {
+          const chainName = (SUPPORTED_CHAINS as any)[chainId]?.chainName || `Chain ${chainId}`;
+          const msg = `Farcaster in-app wallet does not support ${chainName} (chainId ${chainId}). Use an external wallet or contact Farcaster.`;
+          console.warn('⚠️ Preflight fail:', msg);
+          toast.error(msg);
+          setProcessingChainId(null);
+          return;
+        }
+      } catch (miniErr) {
+        console.warn('⚠️ MiniApp preflight check failed or not available:', miniErr);
       }
 
       // Ensure provider is on the desired chain; request switch only for non-Farcaster providers
