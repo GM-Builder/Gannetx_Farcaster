@@ -31,9 +31,7 @@ const FarcasterContent = () => {
   const { address, isConnected, chainId: wagmiChainId } = useAccount();
   const { connect, connectors, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
-
   const { provider, signer, loading: providerLoading, error: providerError } = useDirectProvider();
-
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
   const [lastCheckinChainId, setLastCheckinChainId] = useState<number | null>(null);

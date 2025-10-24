@@ -620,206 +620,121 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
   const NetworkIcon = networkConfig.icon;
 
   return (
-    <div className="w-full pt-10 pb-20">
-      {/* Title & Filter Row */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mr-3">
-                <NetworkIcon className="text-white" size={16} />
-              </div> 
-              {networkType === 'testnet' ? 'Testnet' : networkType === 'mainnet' ? 'Mainnet' : 'All Networks'}
-              <div className={`ml-3 ${networkConfig.badgeColor} text-sm font-medium px-3 py-1 rounded-full backdrop-blur-sm border border-current/20`}>
-                {availableChainCount} Available
-              </div>
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">Say GM across multiple blockchain daily</p>
-          </motion.div>
-          
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="flex flex-wrap gap-2.5"
-          >
-            {/* Filter Dropdown */}
-            <div className="relative z-30" ref={filterMenuRef}>
-              <button
-                onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
-                className="group flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-white/90 to-white/70 dark:from-slate-800/90 dark:to-slate-800/70 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/60 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:shadow-lg hover:scale-[1.02] hover:border-cyan-300/50 dark:hover:border-cyan-500/50 transition-all duration-300 shadow-sm"
-              >
-                <div className="p-1 rounded-lg bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/30 dark:to-blue-900/30 group-hover:from-cyan-100 group-hover:to-blue-100 dark:group-hover:from-cyan-900/50 dark:group-hover:to-blue-900/50 transition-colors">
-                  <FaFilter className="text-cyan-600 dark:text-cyan-400" size={12} />
-                </div>
-                <span className="bg-gradient-to-r from-gray-700 to-gray-900 dark:from-gray-200 dark:to-white bg-clip-text text-transparent">
-                  Filter: {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                </span>
-                <svg 
-                  className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-300 ${isFilterMenuOpen ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              <AnimatePresence>
-                {isFilterMenuOpen && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.92, y: -15 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.92, y: -15 }}
-                    transition={{ duration: 0.25, ease: "easeOut" }}
-                    className="absolute left-0 mt-2 w-48 bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-gray-200/60 dark:border-slate-700/60 rounded-2xl shadow-2xl z-20 overflow-hidden"
-                  >
-                    <div className="py-1.5">
-                      {['all', 'available', 'checked', 'favorites'].map((option, idx) => (
-                        <button
-                          key={option}
-                          onClick={() => {
-                            setFilter(option as FilterType);
-                            setIsFilterMenuOpen(false);
-                          }}
-                          className={`group relative block w-full text-left px-4 py-3 text-sm font-medium transition-all duration-200 ${
-                            filter === option 
-                              ? 'bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/40 dark:to-blue-900/40 text-cyan-700 dark:text-cyan-300 font-semibold' 
-                              : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100/50 dark:hover:from-slate-700/50 dark:hover:to-slate-700/30'
-                          }`}
-                        >
-                          {filter === option && (
-                            <motion.div 
-                              layoutId="activeFilter"
-                              className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-cyan-500 to-blue-500 rounded-r-full"
-                              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                            />
-                          )}
-                          <span className="relative z-10 flex items-center gap-2">
-                            {option === 'all'}
-                            {option === 'available'}
-                            {option === 'checked'}
-                            {option === 'favorites'}
-                            {option.charAt(0).toUpperCase() + option.slice(1)}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+    <div className="w-full pt-8 pb-16">
+      {/* Title & Compact Controls (Base-only, mobile friendly) */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+        <motion.div
+          initial={{ opacity: 0, x: -12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.45 }}
+          className="w-full sm:w-auto"
+        >
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mr-3 flex-shrink-0">
+              <NetworkIcon className="text-white" size={16} />
             </div>
-            
-            {/* Custom Sort Select (Menggantikan <select> native) */}
-            <div className="relative" ref={sortDropdownRef}>
-                
-                {/* Tombol Utama (Menggantikan <select>) */}
-                <button
-                    type="button"
-                    onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
-                    className={`
-                        pl-4 pr-10 py-2.5 
-                        
-                        // Gradien Dark Mode/Light Mode Transparan untuk Efek Kaca
-                        bg-gradient-to-br from-white/20 to-white/10 dark:from-slate-700/60 dark:to-slate-700/40 
-                        
-                        backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/60 
-                        rounded-xl text-sm font-semibold 
-                        text-gray-700 dark:text-gray-200 hover:shadow-lg hover:scale-[1.02] hover:border-purple-300/50 dark:hover:border-purple-500/50 
-                        focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-400 dark:focus:border-purple-500 
-                        transition-all duration-300 shadow-sm cursor-pointer whitespace-nowrap
-                    `}
-                    aria-expanded={isSortDropdownOpen}
-                >
-                    {SORT_OPTIONS.find(opt => opt.value === sortOption)?.label || 'Sort'}
-                    
-                    {/* Ikon Panah */}
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                </button>
-                
-                {/* Menu Opsi Kustom (Menggantikan <option>) */}
-                {isSortDropdownOpen && (
-                    <div
-                        className="absolute z-40 mt-2 w-full min-w-[150px] overflow-hidden rounded-xl shadow-2xl 
-                                  focus:outline-none transform origin-top 
-                                  
-                                  // Fix Dark Mode: Background kustom Dark/Light
-                                  bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-gray-200 dark:border-slate-700"
-                    >
-                        {SORT_OPTIONS.map((option) => (
-                            <div
-                                key={option.value}
-                                onClick={() => {
-                                    setSortOption(option.value);
-                                    setIsSortDropdownOpen(false);
-                                }}
-                                className={`
-                                    px-4 py-2 text-sm cursor-pointer 
-                                    text-gray-800 dark:text-gray-100
-                                    hover:bg-purple-500/10 dark:hover:bg-purple-500/20 
-                                    ${sortOption === option.value ? 'bg-purple-500/20 dark:bg-purple-500/40 font-bold' : ''}
-                                `}
-                            >
-                                {option.label}
-                              </div>
-                      ))}
-                </div>
-              )}
+            Say GM
+            <div className={`ml-3 ${networkConfig.badgeColor} text-xs sm:text-sm font-medium px-2.5 py-0.5 rounded-full backdrop-blur-sm border border-current/20`}>
+              {availableChainCount} Available
             </div>
-            
-            {/* Refresh Button */}
-            <button 
-              onClick={checkAllChainsStatus}
-              disabled={isLoading || !isConnected}
-              className={`group relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 shadow-sm overflow-hidden ${
-                isLoading 
-                  ? 'bg-gradient-to-r from-cyan-100/60 to-blue-100/60 dark:from-cyan-900/30 dark:to-blue-900/30 text-cyan-600 dark:text-cyan-400 border border-cyan-200/60 dark:border-cyan-700/50 cursor-wait' 
-                  : !isConnected
-                    ? 'bg-gray-100/60 dark:bg-slate-800/50 text-gray-400 dark:text-gray-500 border border-gray-200/50 dark:border-slate-700/50 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-cyan-500/15 to-blue-500/15 dark:from-cyan-500/20 dark:to-blue-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-300/50 dark:border-cyan-600/50 hover:shadow-lg hover:scale-[1.02] hover:from-cyan-500/25 hover:to-blue-500/25 dark:hover:from-cyan-500/30 dark:hover:to-blue-500/30 active:scale-95'
-              }`}
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1"></p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.45, delay: 0.05 }}
+          className="flex items-center gap-2 w-full sm:w-auto justify-end sm:justify-end"
+        >
+          {/* Filter Button (icon-only on mobile) */}
+          <div className="relative z-30">
+            <button
+              onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
+              className="group flex items-center gap-2 px-3 py-2 bg-white/90 dark:bg-slate-800/80 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/60 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:shadow hover:scale-[1.02] transition-all duration-200"
             >
-              {/* Animated background on hover */}
-              {!isLoading && isConnected && (
-                <motion.div 
-                  className="absolute inset-0 bg-gradient-to-r from-cyan-400/0 via-cyan-400/20 to-cyan-400/0 dark:from-cyan-500/0 dark:via-cyan-500/30 dark:to-cyan-500/0"
-                  initial={{ x: '-100%' }}
-                  whileHover={{ x: '100%' }}
-                  transition={{ duration: 0.6, ease: "easeInOut" }}
-                />
-              )}
-              
-              <div className="relative z-10 flex items-center gap-2">
-                {isLoading ? (
-                  <>
-                    <FaSpinner className="animate-spin" size={14} />
-                    <span>Refreshing...</span>
-                  </>
-                ) : (
-                  <>
-                    <motion.div
-                      animate={isConnected ? { rotate: 360 } : {}}
-                      transition={{ duration: 0.6, ease: "easeInOut" }}
-                      whileHover={{ rotate: 360 }}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    </motion.div>
-                    <span>Refresh</span>
-                  </>
-                )}
+              <div className="p-1 rounded-md bg-cyan-50 dark:bg-cyan-900/20">
+                <FaFilter className="text-cyan-600 dark:text-cyan-300" size={12} />
               </div>
+              <span className="hidden sm:inline">Filter: {filter.charAt(0).toUpperCase() + filter.slice(1)}</span>
+              <span className="sm:hidden text-xs">Filter</span>
+              <svg className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${isFilterMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
             </button>
-          </motion.div>
-        </div>
+
+            <AnimatePresence>
+              {isFilterMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                  transition={{ duration: 0.18 }}
+                  className="absolute right-0 mt-2 w-44 bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-gray-200/60 dark:border-slate-700/60 rounded-2xl shadow-xl z-20 overflow-hidden"
+                >
+                  <div className="py-1">
+                    {['all', 'available', 'checked', 'favorites'].map(option => (
+                      <button
+                        key={option}
+                        onClick={() => {
+                          setFilter(option as FilterType);
+                          setIsFilterMenuOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm ${filter === option ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 font-semibold' : 'text-gray-700 dark:text-gray-300'} hover:bg-gray-50 dark:hover:bg-slate-700/30`}
+                      >
+                        {option.charAt(0).toUpperCase() + option.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Sort (compact) */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
+              className="pl-3 pr-3 py-2 bg-white/90 dark:bg-slate-800/80 backdrop-blur-xl border border-gray-200/60 dark:border-slate-700/60 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:shadow transition-all duration-200"
+              aria-expanded={isSortDropdownOpen}
+            >
+              <span className="hidden sm:inline">{SORT_OPTIONS.find(opt => opt.value === sortOption)?.label || 'Sort'}</span>
+              <span className="sm:hidden">Sort</span>
+            </button>
+
+            {isSortDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-44 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border border-gray-200/60 dark:border-slate-700/60 rounded-xl shadow-xl z-30">
+                {SORT_OPTIONS.map(option => (
+                  <div
+                    key={option.value}
+                    onClick={() => { setSortOption(option.value); setIsSortDropdownOpen(false); }}
+                    className={`px-4 py-2 text-sm cursor-pointer ${sortOption === option.value ? 'bg-purple-500/10 dark:bg-purple-500/20 font-semibold' : 'text-gray-800 dark:text-gray-100'}`}
+                  >
+                    {option.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Refresh - icon-only on mobile */}
+          <button
+            onClick={checkAllChainsStatus}
+            disabled={isLoading || !isConnected}
+            className="ml-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 border border-cyan-200/50 dark:border-cyan-700/30 text-sm font-semibold text-cyan-700 dark:text-cyan-300 hover:shadow transition-all duration-200"
+          >
+            {isLoading ? (
+              <FaSpinner className="animate-spin" size={14} />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            )}
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+        </motion.div>
+      </div>
 
       {!isConnected && (
         <motion.div 
@@ -866,7 +781,7 @@ const SORT_OPTIONS: { value: SortOptionType; label: string }[] = [
         </motion.div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {filteredChains.map((chain, index) => {
           const chainStatus = chain.status;
           const isCurrentChain = currentChainId === chain.id;
