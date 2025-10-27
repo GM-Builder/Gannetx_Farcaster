@@ -368,8 +368,8 @@ const FarcasterContent = () => {
                           myReferralsCount={0}
                           userReferredBy={null}
                           onCopyLink={() => {
-                            const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '');
-                            const referralLink = `${baseUrl}/ref?ref=${address}`;
+                            const FARCASTER_UNIVERSAL = 'https://farcaster.xyz/miniapps/9FQxd6AoFiwp/gannetx';
+                            const referralLink = `${FARCASTER_UNIVERSAL}?ref=${address}`;
                             navigator.clipboard.writeText(referralLink);
                             toast.success('Referral link copied!');
                           }}

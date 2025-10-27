@@ -10,8 +10,9 @@ type ReferralShareProps = {
 const ReferralShare: React.FC<ReferralShareProps> = ({ castHash, castFid, viewerFid }) => {
   const [copied, setCopied] = useState(false);
   const referralCode = viewerFid || 'guest';
-  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '');
-  const referralUrl = `${baseUrl}/ref?ref=${referralCode}`;
+  // Prefer Farcaster universal miniapp link so clicks open directly inside Farcaster clients
+  const FARCASTER_UNIVERSAL = 'https://farcaster.xyz/miniapps/9FQxd6AoFiwp/gannetx';
+  const referralUrl = `${FARCASTER_UNIVERSAL}?ref=${referralCode}`;
 
   const onCopy = useCallback(async () => {
     try {
