@@ -368,8 +368,8 @@ const FarcasterContent = () => {
                           myReferralsCount={0}
                           userReferredBy={null}
                           onCopyLink={() => {
-                            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-                            const referralLink = `${baseUrl.replace(/\/$/, '')}/?ref=${address}`;
+                            const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '');
+                            const referralLink = `${baseUrl}/ref?ref=${address}`;
                             navigator.clipboard.writeText(referralLink);
                             toast.success('Referral link copied!');
                           }}

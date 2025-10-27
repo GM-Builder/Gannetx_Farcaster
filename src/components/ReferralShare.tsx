@@ -10,7 +10,8 @@ type ReferralShareProps = {
 const ReferralShare: React.FC<ReferralShareProps> = ({ castHash, castFid, viewerFid }) => {
   const [copied, setCopied] = useState(false);
   const referralCode = viewerFid || 'guest';
-  const referralUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/?ref=${referralCode}`;
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '');
+  const referralUrl = `${baseUrl}/ref?ref=${referralCode}`;
 
   const onCopy = useCallback(async () => {
     try {
