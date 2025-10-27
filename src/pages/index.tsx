@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { WagmiProvider, useAccount, useConnect, useDisconnect } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { wagmiConfig } from '@/config/wagmi';
@@ -100,6 +101,8 @@ const FarcasterContent = () => {
       window.location.reload();
     }, 2000);
   }, []);
+
+  const router = useRouter();
 
   const handleCopyAddress = useCallback(() => {
     if (address) {
@@ -360,19 +363,27 @@ const FarcasterContent = () => {
                         maxStreak={userStats?.maxStreak || 0}
                       />
 
-                      <SidebarReferralCard
-                        canUseReferral={true}
-                        myReferralsCount={0}
-                        userReferredBy={null}
-                        onCopyLink={() => {
-                          const referralLink = `${window.location.origin}?ref=${address}`;
-                          navigator.clipboard.writeText(referralLink);
-                          toast.success('Referral link copied!');
-                        }}
-                        onCardClick={() => toast('Referral dashboard coming soon!')}
-                        onSwitchToBase={() => toast('Already on Base chain!')}
-                        formatAddress={formatAddress}
-                      />
+                        <SidebarReferralCard
+                          canUseReferral={true}
+                          myReferralsCount={0}
+                          userReferredBy={null}
+                          onCopyLink={() => {
+                            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+                            const referralLink = `${baseUrl.replace(/\/$/, '')}/?ref=${address}`;
+                            navigator.clipboard.writeText(referralLink);
+                            toast.success('Referral link copied!');
+                          }}
+                          onCardClick={() => {
+                            // Open the /share page with viewerFid so user can share via Farcaster
+                            if (address) {
+                              router.push(`/share?viewerFid=${address}`);
+                            } else {
+                              toast('Connect wallet to open referral dashboard');
+                            }
+                          }}
+                          onSwitchToBase={() => toast('Already on Base chain!')}
+                          formatAddress={formatAddress}
+                        />
                     </div>
                   </>
                 ) : (
