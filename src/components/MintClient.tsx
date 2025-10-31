@@ -201,25 +201,64 @@ const MintClient: React.FC = () => {
 
       const contractWithSigner = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, signer);
 
-      // Estimate gas for the mint call. Some providers require gasLimit to be set.
-      let gasEstimate: ethers.BigNumber | null = null;
+      // Populate the transaction using the contract (fills data). Then estimate gas
+      // using the readOnlyProvider so we don't rely on the injected signer provider.
+      const populated = await contractWithSigner.populateTransaction.claimFuncaster(ethers.BigNumber.from(warpletsFID), { value: mintPrice });
+
+      let gasLimit: ethers.BigNumber | undefined = undefined;
       try {
-        gasEstimate = await contractWithSigner.estimateGas.claimFuncaster(ethers.BigNumber.from(warpletsFID), { value: mintPrice });
+        // First try the primary RPC from constants
+        gasLimit = await readOnlyProvider.estimateGas({ to: populated.to, data: populated.data, value: populated.value });
       } catch (estErr) {
-        console.warn('Gas estimate failed:', estErr);
-        // continue without gasEstimate — signer/provider may still accept transaction
+        console.warn('Gas estimate failed on primary RPC:', estErr);
+        try {
+          // Fallback RPC (llamarpc)
+          const fallback = new ethers.providers.JsonRpcProvider('https://base.llamarpc.com');
+          gasLimit = await fallback.estimateGas({ to: populated.to, data: populated.data, value: populated.value });
+        } catch (estErr2) {
+          console.warn('Gas estimate failed on fallback RPC:', estErr2);
+          gasLimit = undefined; // we'll proceed without gasLimit
+        }
       }
 
-      // If we have an estimate, add a small buffer (10%)
-      const gasLimit = gasEstimate ? gasEstimate.mul(110).div(100) : undefined;
+      if (gasLimit) {
+        // Add 10% buffer
+        gasLimit = gasLimit.mul(110).div(100);
+      }
 
-      // Send transaction. Use contract call (which uses the signer) so wallets present the call properly.
-      const tx = await contractWithSigner.claimFuncaster(ethers.BigNumber.from(warpletsFID), { value: mintPrice, ...(gasLimit ? { gasLimit } : {}) });
+      // Send transaction via signer directly using the populated tx. This avoids
+      // contractWithSigner estimating gas again on the injected provider.
+      const txRequest: any = {
+        to: populated.to,
+        data: populated.data,
+        value: populated.value,
+        ...(gasLimit ? { gasLimit } : {}),
+      };
+
+      const tx = await signer.sendTransaction(txRequest);
       setTxHash(tx.hash);
       toast('Transaction sent — waiting for confirmation...', { icon: '⏳' });
       const receipt = await tx.wait();
       toast.success('Mint succeeded!');
-      const claimedEvent = receipt.events?.find((e: any) => e.event === 'FuncasterClaimed');
+      // Parse logs to find the FuncasterClaimed event (signer.sendTransaction returns a raw receipt)
+      let claimedEvent: any | null = null;
+      try {
+        const iface = new ethers.utils.Interface(FUNC_ABI as any);
+        for (const log of receipt.logs || []) {
+          try {
+            const parsed = iface.parseLog(log as any);
+            if (parsed && parsed.name === 'FuncasterClaimed') {
+              claimedEvent = parsed;
+              break;
+            }
+          } catch (e) {
+            // ignore unparsable logs
+          }
+        }
+      } catch (parseErr) {
+        console.warn('Failed to parse receipt logs for events', parseErr);
+      }
+
       if (claimedEvent) {
         const tokenId = claimedEvent.args?.tokenId?.toString();
         setStatusMessage(`Mint successful — tokenId: ${tokenId}`);
