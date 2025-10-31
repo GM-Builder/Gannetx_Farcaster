@@ -145,24 +145,38 @@ const MintClient: React.FC = () => {
   React.useEffect(() => {
     let mounted = true;
     const detectOwnerToken = async () => {
-      if (!isConnected || !provider || !address) return;
+    // We do not require the injected provider for read-only auto-detection; use readOnlyProvider
+    if (!isConnected || !address) return;
       try {
   // Use readOnlyProvider for auto-detection reads
-  const funcContract = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, readOnlyProvider);
-  const warpletsAddr = await funcContract.WARPLETS_CONTRACT_ADDRESS();
-        if (!warpletsAddr || warpletsAddr === ethers.constants.AddressZero) {
-          if (mounted) setStatusMessage('Warplets contract not found on Funcaster contract.');
-          return;
-        }
+      let warpletsAddr: string | null = null;
+      try {
+        const funcContract = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, readOnlyProvider);
+        warpletsAddr = await funcContract.WARPLETS_CONTRACT_ADDRESS();
+      } catch (addrErr: any) {
+        console.warn('Failed to read WARPLETS_CONTRACT_ADDRESS (readOnlyProvider) — maybe RPC rate-limited or method unsupported', addrErr);
+      }
+      if (!warpletsAddr || warpletsAddr === ethers.constants.AddressZero) {
+        if (mounted) setStatusMessage('Warplets contract not found on Funcaster contract.');
+        return;
+      }
 
         const ERC721_ENUM_ABI = [
           'function balanceOf(address) view returns (uint256)',
           'function tokenOfOwnerByIndex(address,uint256) view returns (uint256)'
         ];
 
-  const warpletsContract = new ethers.Contract(warpletsAddr, ERC721_ENUM_ABI, readOnlyProvider);
-  const balance = await warpletsContract.balanceOf(address);
-        if (balance && balance.gt(0)) {
+      const warpletsContract = new ethers.Contract(warpletsAddr, ERC721_ENUM_ABI, readOnlyProvider);
+      let balance;
+      try {
+        balance = await warpletsContract.balanceOf(address);
+      } catch (balErr: any) {
+        console.warn('balanceOf call failed on readOnlyProvider', balErr);
+        // If balance call fails, fall back to scanning Transfer logs for incoming transfers
+        balance = null;
+      }
+
+      if (balance && balance.gt && balance.gt(0)) {
           // Try tokenOfOwnerByIndex first (ERC721Enumerable). If it's not implemented,
           // fall back to scanning Transfer logs to find a tokenId owned by the address.
           try {
