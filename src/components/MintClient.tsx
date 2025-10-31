@@ -188,10 +188,33 @@ const MintClient: React.FC = () => {
     setMinting(true);
     setTxHash(null);
     try {
-      const contractWithSigner = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, signer);
-      const value = ethers.utils.parseEther(MINT_PRICE_ETH);
+      // Read the mint price from the contract using readOnlyProvider to ensure we send the
+      // exact required value (prevents underpaying/overpaying issues).
+      const funcRead = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, readOnlyProvider);
+      let mintPrice: ethers.BigNumber;
+      try {
+        mintPrice = await funcRead.MINT_PRICE();
+      } catch (e) {
+        console.warn('Failed to read MINT_PRICE from contract, falling back to constant', e);
+        mintPrice = ethers.utils.parseEther(MINT_PRICE_ETH);
+      }
 
-      const tx = await contractWithSigner.claimFuncaster(ethers.BigNumber.from(warpletsFID), { value });
+      const contractWithSigner = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, signer);
+
+      // Estimate gas for the mint call. Some providers require gasLimit to be set.
+      let gasEstimate: ethers.BigNumber | null = null;
+      try {
+        gasEstimate = await contractWithSigner.estimateGas.claimFuncaster(ethers.BigNumber.from(warpletsFID), { value: mintPrice });
+      } catch (estErr) {
+        console.warn('Gas estimate failed:', estErr);
+        // continue without gasEstimate — signer/provider may still accept transaction
+      }
+
+      // If we have an estimate, add a small buffer (10%)
+      const gasLimit = gasEstimate ? gasEstimate.mul(110).div(100) : undefined;
+
+      // Send transaction. Use contract call (which uses the signer) so wallets present the call properly.
+      const tx = await contractWithSigner.claimFuncaster(ethers.BigNumber.from(warpletsFID), { value: mintPrice, ...(gasLimit ? { gasLimit } : {}) });
       setTxHash(tx.hash);
       toast('Transaction sent — waiting for confirmation...', { icon: '⏳' });
       const receipt = await tx.wait();
@@ -204,17 +227,26 @@ const MintClient: React.FC = () => {
         setStatusMessage('Mint successful — transaction confirmed.');
       }
     } catch (err: any) {
-      console.error('Mint failed', err);
-      if (err.code === 4001) {
+      // Log structured error info to help debugging provider/contract issues
+      console.error('Mint failed', {
+        message: err?.message,
+        code: err?.code,
+        reason: err?.reason,
+        data: err?.data,
+        error: err?.error,
+        transaction: err?.transaction,
+        receipt: err?.receipt,
+      }, err);
+
+      if (err && err.code === 4001) {
         toast.error('Transaction cancelled by user');
-      } else if (err?.error?.message) {
-        toast.error(err.error.message);
-      } else if (err?.data?.message) {
-        toast.error(err.data.message);
-      } else if (typeof err === 'string') {
-        toast.error(err);
+      } else if (err && (err?.data?.message || err?.error?.message || err?.message)) {
+        const msg = err?.data?.message || err?.error?.message || err?.message;
+        toast.error(msg);
+        setStatusMessage(msg);
       } else {
         toast.error('Mint failed — lihat console untuk detail');
+        setStatusMessage('Mint failed — lihat console untuk detail');
       }
     } finally {
       setMinting(false);
