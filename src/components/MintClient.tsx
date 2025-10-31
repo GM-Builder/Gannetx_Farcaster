@@ -163,11 +163,50 @@ const MintClient: React.FC = () => {
   const warpletsContract = new ethers.Contract(warpletsAddr, ERC721_ENUM_ABI, readOnlyProvider);
   const balance = await warpletsContract.balanceOf(address);
         if (balance && balance.gt(0)) {
-          const tokenId = await warpletsContract.tokenOfOwnerByIndex(address, 0);
-          if (mounted) {
-            setWarpletsFID(tokenId.toString());
-            setStatusMessage(`Detected Warplets FID: ${tokenId.toString()}`);
-            setEligible(null);
+          // Try tokenOfOwnerByIndex first (ERC721Enumerable). If it's not implemented,
+          // fall back to scanning Transfer logs to find a tokenId owned by the address.
+          try {
+            const tokenId = await warpletsContract.tokenOfOwnerByIndex(address, 0);
+            if (mounted) {
+              setWarpletsFID(tokenId.toString());
+              setStatusMessage(`Detected Warplets FID: ${tokenId.toString()}`);
+              setEligible(null);
+            }
+          } catch (enumErr) {
+            console.warn('tokenOfOwnerByIndex not available, falling back to logs', enumErr);
+            try {
+              const transferTopic = ethers.utils.id('Transfer(address,address,uint256)');
+              const topics = [transferTopic, null, ethers.utils.hexZeroPad(address, 32)];
+              const logs = await readOnlyProvider.getLogs({ address: warpletsAddr, topics, fromBlock: 0, toBlock: 'latest' });
+              if (logs && logs.length) {
+                // parse the latest log and extract tokenId from topics[3]
+                const last = logs[logs.length - 1];
+                const tidHex = last.topics && last.topics.length > 3 ? last.topics[3] : null;
+                let foundId = null;
+                if (tidHex) {
+                  foundId = ethers.BigNumber.from(tidHex).toString();
+                } else {
+                  // fallback: try to parse data
+                  try {
+                    const iface = new ethers.utils.Interface(['event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)']);
+                    const parsed = iface.parseLog(last as any);
+                    foundId = parsed?.args?.tokenId?.toString();
+                  } catch (pErr) {
+                    console.warn('Failed to parse transfer log for tokenId', pErr);
+                  }
+                }
+                if (foundId && mounted) {
+                  setWarpletsFID(foundId);
+                  setStatusMessage(`Detected Warplets FID from logs: ${foundId}`);
+                  setEligible(null);
+                }
+              } else {
+                if (mounted) setStatusMessage('You do not own any Warplets tokens.');
+              }
+            } catch (logErr) {
+              console.warn('Failed to query Transfer logs for Warplets tokens', logErr);
+              if (mounted) setStatusMessage('Gagal mendeteksi Warplets token lewat logs. Silakan masukkan FID secara manual.');
+            }
           }
         } else {
           if (mounted) setStatusMessage('You do not own any Warplets tokens.');
@@ -195,6 +234,29 @@ const MintClient: React.FC = () => {
     setMinting(true);
     setTxHash(null);
     try {
+      // Before submitting, simulate the call server-side to decode revert reasons when RPCs strip data.
+      const simulateMint = async (fid: string) => {
+        try {
+          const res = await fetch('/api/simulate-mint', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fid })
+          });
+          if (!res.ok) return null;
+          return await res.json();
+        } catch (e) {
+          console.warn('simulate-mint request failed', e);
+          return null;
+        }
+      };
+
+      const sim = await simulateMint(warpletsFID);
+      if (sim && sim.matchedError) {
+        // If server simulation predicts a revert with a known custom error, show it and abort.
+        setStatusMessage(`Kontrak akan revert: ${sim.matchedError}(). ${sim.raw || ''}`);
+        setMinting(false);
+        return;
+      }
       // Read the mint price from the contract using readOnlyProvider to ensure we send the
       // exact required value (prevents underpaying/overpaying issues).
       const funcRead = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, readOnlyProvider);
