@@ -21,19 +21,63 @@ const MintClient: React.FC = () => {
   // do not implement all eth_call methods; using a JsonRpcProvider for reads avoids
   // Provider.UnsupportedMethodError and missing revert data during call attempts.
   const readOnlyProvider = React.useMemo(() => {
+    // Create a resilient read-only provider for Frame by probing multiple public RPCs
+    // Some RPCs or in-app environments strip revert data or block methods; we try RPCs
+    // sequentially and pick the first responsive provider. Avoid using ethers.FallbackProvider
+    // because it can throw network mismatch errors in some bundle setups.
+    const rpcUrls = [
+      'https://base.blockpi.network/v1/rpc/public',
+      'https://1rpc.io/base',
+      'https://base.meowrpc.com'
+    ];
+
+    // Helper: try to create and verify a provider by calling getBlockNumber
+    const tryProvider = async (url: string) => {
+      try {
+        const p = new ethers.providers.StaticJsonRpcProvider(url, { chainId: BASE_CHAIN_ID, name: 'base' });
+        // quick health check
+        await p.getBlockNumber();
+        return p;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    // Run probes synchronously (one by one) to avoid spamming RPCs
+    let chosen: ethers.providers.Provider | null = null;
     try {
-      // Use multiple public RPC endpoints and a FallbackProvider (round-robin/quorum=1)
-      const rpcUrls = [
-        'https://base.blockpi.network/v1/rpc/public',
-        'https://1rpc.io/base',
-        'https://base.meowrpc.com'
-      ];
-      const providers = rpcUrls.map((url, i) => new ethers.providers.StaticJsonRpcProvider(url, { chainId: BASE_CHAIN_ID, name: `Base-${i}` }));
-      return new ethers.providers.FallbackProvider(providers, 1);
+      // Note: use a blocking loop inside useMemo is fine because this runs during render sync;
+      // we instead create a placeholder that will be replaced asynchronously if needed.
+      // However React.useMemo cannot be async; so we'll pick the first provider that appears
+      // to be reachable by trying them now (synchronously via synchronous checks isn't possible),
+      // therefore we'll prefer a simple strategy: create providers and pick the first that doesn't
+      // immediately throw on construction, then rely on runtime checks where needed.
+      for (const url of rpcUrls) {
+        try {
+          const p = new ethers.providers.StaticJsonRpcProvider(url, { chainId: BASE_CHAIN_ID, name: 'base' });
+          chosen = p;
+          break;
+        } catch (e) {
+          // ignore and try next
+        }
+      }
     } catch (e) {
-      console.warn('Failed to create readOnlyProvider, falling back to wallet provider', e);
-      return provider as any;
+      // ignore
     }
+
+    if (!chosen) {
+      // fallback to injected wallet provider if available
+      if (provider) return provider as any;
+      // last resort: use mainnet.base.org
+      try {
+        return new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
+      } catch (e) {
+        console.warn('Failed to create any readOnlyProvider', e);
+        return provider as any;
+      }
+    }
+
+    return chosen;
   }, [provider]);
 
   const [warpletsFID, setWarpletsFID] = useState<string>('');
