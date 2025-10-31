@@ -22,8 +22,14 @@ const MintClient: React.FC = () => {
   // Provider.UnsupportedMethodError and missing revert data during call attempts.
   const readOnlyProvider = React.useMemo(() => {
     try {
-      const rpc = getChainRpcUrl(BASE_CHAIN_ID) || 'https://mainnet.base.org';
-      return new ethers.providers.JsonRpcProvider(rpc);
+      // Use multiple public RPC endpoints and a FallbackProvider (round-robin/quorum=1)
+      const rpcUrls = [
+        'https://base.blockpi.network/v1/rpc/public',
+        'https://1rpc.io/base',
+        'https://base.meowrpc.com'
+      ];
+      const providers = rpcUrls.map((url, i) => new ethers.providers.StaticJsonRpcProvider(url, { chainId: BASE_CHAIN_ID, name: `Base-${i}` }));
+      return new ethers.providers.FallbackProvider(providers, 1);
     } catch (e) {
       console.warn('Failed to create readOnlyProvider, falling back to wallet provider', e);
       return provider as any;
@@ -36,6 +42,7 @@ const MintClient: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [minting, setMinting] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string>('');
 
   const checkEligibility = useCallback(async () => {
     setStatusMessage(null);
@@ -69,29 +76,25 @@ const MintClient: React.FC = () => {
         }
       }
 
-  // Use readOnlyProvider for RPC calls to avoid unsupported-method errors from in-wallet providers
-  const funcContract = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, readOnlyProvider);
+      // Use readOnlyProvider for RPC calls to avoid unsupported-method errors from in-wallet providers
+      const funcContract = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, readOnlyProvider);
 
-  const mintPrice = await funcContract.MINT_PRICE();
-  console.log('checkEligibility: mintPrice wei=', mintPrice.toString(), 'eth=', ethers.utils.formatEther(mintPrice));
-  const mintPriceFormatted = ethers.utils.formatEther(mintPrice);
-
+      // Read mint price and other data in parallel to reduce round trips and mitigate rate limits
       const fidNum = ethers.BigNumber.from(warpletsFID);
-      const used = await funcContract.isFIDUsed(fidNum);
+      const [mintPrice, used, warpletsAddr] = await Promise.all([
+        funcContract.MINT_PRICE(),
+        funcContract.isFIDUsed(fidNum),
+        funcContract.WARPLETS_CONTRACT_ADDRESS()
+      ]);
+      console.log('checkEligibility: mintPrice wei=', mintPrice.toString(), 'eth=', ethers.utils.formatEther(mintPrice));
+      const mintPriceFormatted = ethers.utils.formatEther(mintPrice);
+
       if (used) {
         setEligible(false);
         setStatusMessage('FID sudah pernah digunakan untuk minting.');
         setChecking(false);
         return;
       }
-
-      let warpletsAddr = '';
-      try {
-        warpletsAddr = await funcContract.WARPLETS_CONTRACT_ADDRESS();
-      } catch (e) {
-        console.warn('Could not read WARPLETS_CONTRACT_ADDRESS from contract', e);
-      }
-
       const ERC721_MIN_ABI = ['function ownerOf(uint256 tokenId) view returns (address)'];
 
       if (!warpletsAddr || warpletsAddr === ethers.constants.AddressZero) {
@@ -100,7 +103,7 @@ const MintClient: React.FC = () => {
         return;
       }
 
-  const warpletsContract = new ethers.Contract(warpletsAddr, ERC721_MIN_ABI, readOnlyProvider);
+      const warpletsContract = new ethers.Contract(warpletsAddr, ERC721_MIN_ABI, readOnlyProvider);
       let ownerOfFID = null;
       try {
         ownerOfFID = await warpletsContract.ownerOf(fidNum);
@@ -118,7 +121,7 @@ const MintClient: React.FC = () => {
         return;
       }
 
-  const balance = await readOnlyProvider.getBalance(address as string);
+      const balance = await readOnlyProvider.getBalance(address as string);
       const balanceEth = ethers.utils.formatEther(balance);
       if (balance.lt(mintPrice)) {
         setEligible(false);
@@ -136,7 +139,7 @@ const MintClient: React.FC = () => {
     } finally {
       setChecking(false);
     }
-  }, [warpletsFID, isConnected, provider]);
+  }, [warpletsFID, isConnected, address, readOnlyProvider]);
 
   // Auto-detect Warplets token owned by connected wallet and prefill warpletsFID
   React.useEffect(() => {
@@ -240,95 +243,57 @@ const MintClient: React.FC = () => {
 
       const contractWithSigner = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, signer);
 
-      // Try to estimate gas using a trusted read-only RPC. If estimate fails
-      // (some RPCs or environments block eth_estimateGas), fall back to letting
-      // the user's wallet/provider submit the transaction via the contract method
-      // which usually triggers a secure gas estimation flow in the wallet UI.
-      let gasLimit: ethers.BigNumber | undefined = undefined;
-      try {
-        const populated = await contractWithSigner.populateTransaction.claimFuncaster(ethers.BigNumber.from(warpletsFID), { value: mintPrice });
-        gasLimit = await readOnlyProvider.estimateGas({ to: populated.to, data: populated.data, value: populated.value });
-        if (gasLimit) gasLimit = gasLimit.mul(110).div(100); // add 10% buffer
-      } catch (estErr) {
-        console.warn('Gas estimate failed on readOnlyProvider, will let wallet/provider handle gas:', estErr);
-        try {
-          gasLimit = ethers.BigNumber.from(300000);
-          console.log('Using fallback gasLimit', gasLimit.toString());
-        } catch (be) {
-          gasLimit = undefined;
-        }
-      }
+      // For Frame environments we avoid estimateGas (some providers block eth_estimateGas).
+      // Instead we submit the tx with reasonable overrides and do not wait for a receipt here.
+      const gasLimit = ethers.BigNumber.from(300000);
+      const overrides: any = {
+        value: mintPrice,
+        gasLimit,
+        type: 2,
+        maxFeePerGas: ethers.utils.parseUnits('0.1', 'gwei'),
+        maxPriorityFeePerGas: ethers.utils.parseUnits('0.1', 'gwei')
+      };
 
-      // If we have a gasLimit, send a low-level signed transaction via signer.sendTransaction
-      // (this is optional). Otherwise, call the contract method and let the wallet UI handle gas.
       let tx;
-      if (gasLimit) {
-        const populated = await contractWithSigner.populateTransaction.claimFuncaster(ethers.BigNumber.from(warpletsFID), { value: mintPrice });
-        const txRequest: any = {
-          to: populated.to,
-          data: populated.data,
-          value: populated.value,
-          gasLimit,
-        };
-        tx = await signer.sendTransaction(txRequest);
-      } else {
-        tx = await contractWithSigner.claimFuncaster(ethers.BigNumber.from(warpletsFID), { value: mintPrice });
-      }
-      setTxHash(tx.hash);
-      toast('Transaction sent — waiting for confirmation...', { icon: '⏳' });
-      const receipt = await tx.wait();
-      toast.success('Mint succeeded!');
-      // Parse logs to find the FuncasterClaimed event (signer.sendTransaction returns a raw receipt)
-      let claimedEvent: any | null = null;
       try {
-        const iface = new ethers.utils.Interface(FUNC_ABI as any);
-        for (const log of receipt.logs || []) {
-          try {
-            const parsed = iface.parseLog(log as any);
-            if (parsed && parsed.name === 'FuncasterClaimed') {
-              claimedEvent = parsed;
-              break;
-            }
-          } catch (e) {
-            // ignore unparsable logs
-          }
-        }
-      } catch (parseErr) {
-        console.warn('Failed to parse receipt logs for events', parseErr);
+        tx = await contractWithSigner.claimFuncaster(ethers.BigNumber.from(warpletsFID), overrides);
+      } catch (callErr: any) {
+        // Some providers will throw when trying to create EIP-1559 fields or unsupported methods
+        console.error('Frame submit error', callErr);
+        throw callErr;
       }
 
-      if (claimedEvent) {
-        const tokenId = claimedEvent.args?.tokenId?.toString();
-        setStatusMessage(`Mint successful — tokenId: ${tokenId}`);
-      } else {
-        setStatusMessage('Mint successful — transaction confirmed.');
-      }
+      setTxHash(tx.hash);
+      const explorerUrl = `https://basescan.org/tx/${tx.hash}`;
+      setStatusMessage(`Transaction submitted! View on BaseScan: ${explorerUrl}`);
+      toast.success('Transaction submitted!');
+
+      // Note: intentionally not awaiting tx.wait() because Frame may not expose full receipt flow.
     } catch (err: any) {
-      // Log structured error info to help debugging provider/contract issues
-      console.error('Mint failed', {
-        message: err?.message,
-        code: err?.code,
-        reason: err?.reason,
-        data: err?.data,
-        error: err?.error,
-        transaction: err?.transaction,
-        receipt: err?.receipt,
-      }, err);
+      console.error('Mint error:', err);
+      // store details for UI debugging (truncate if huge)
+      try {
+        setErrorDetails(JSON.stringify({ message: err?.message, code: err?.code, data: err?.data, error: err?.error }, null, 2).slice(0, 2000));
+      } catch (sd) {
+        setErrorDetails(String(err));
+      }
 
-      if (err && err.code === 4001) {
-        toast.error('Transaction cancelled by user');
-      } else if (err && (err?.data?.message || err?.error?.message || err?.message)) {
-        const msg = err?.data?.message || err?.error?.message || err?.message;
-        toast.error(msg);
-        setStatusMessage(msg);
+      // Handle Frame-specific errors
+      if (err?.code === 'ACTION_REJECTED' || err?.code === 4001) {
+        toast.error('Transaction ditolak');
+      } else if (err?.error?.code === 3) {
+        toast.error('Transaksi gagal: FID tidak eligible atau sudah digunakan');
+      } else if (err?.message?.includes('eth_blockNumber')) {
+        toast.error('Provider error - silakan coba lagi');
+      } else if (err?.message) {
+        toast.error(err.message);
       } else {
-        toast.error('Mint failed — lihat console untuk detail');
-        setStatusMessage('Mint failed — lihat console untuk detail');
+        toast.error('Mint failed - silakan coba lagi');
       }
     } finally {
       setMinting(false);
     }
-  }, [signer, warpletsFID, eligible]);
+  }, [signer, warpletsFID, eligible, readOnlyProvider, address]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white to-cyan-50 dark:from-slate-900 dark:to-slate-800 py-12 px-4">
@@ -371,6 +336,12 @@ const MintClient: React.FC = () => {
 
           {statusMessage && (
             <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm">{statusMessage}</div>
+          )}
+
+          {errorDetails && (
+            <div className="mt-2 text-xs text-red-600 font-mono break-all">
+              Error: {errorDetails}
+            </div>
           )}
 
           {eligible && (
