@@ -33,8 +33,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // ignore
     }
 
+    // Accept optional fid parameter to lookup ownerOf(fid) directly
+    const fidParam = (req.method === 'GET' ? req.query.fid : req.body?.fid) as string | undefined;
     let tokenId: string | null = null;
     try {
+      if (typeof fidParam !== 'undefined' && fidParam !== null && fidParam !== '') {
+        // If client provided a fid, try to read ownerOf directly
+        try {
+          const own = await warplets.ownerOf(ethers.BigNumber.from(fidParam));
+          tokenId = fidParam;
+          return res.status(200).json({ warpletsAddr, balance: balance ? balance.toString() : null, tokenId, ownerOf: own });
+        } catch (ownerErr) {
+          // continue to other fallbacks
+        }
+      }
       if (balance && balance.gt(0)) {
         try {
           const tid = await warplets.tokenOfOwnerByIndex(address, 0);

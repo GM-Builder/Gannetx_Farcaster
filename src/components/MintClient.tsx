@@ -81,13 +81,60 @@ const MintClient: React.FC = () => {
 
       // Read mint price and other data in parallel to reduce round trips and mitigate rate limits
       const fidNum = ethers.BigNumber.from(warpletsFID);
-      const [mintPrice, used, warpletsAddr] = await Promise.all([
-        funcContract.MINT_PRICE(),
-        funcContract.isFIDUsed(fidNum),
-        funcContract.WARPLETS_CONTRACT_ADDRESS()
-      ]);
-      console.log('checkEligibility: mintPrice wei=', mintPrice.toString(), 'eth=', ethers.utils.formatEther(mintPrice));
-      const mintPriceFormatted = ethers.utils.formatEther(mintPrice);
+      let mintPrice: ethers.BigNumber | null = null;
+      let used: boolean | null = null;
+      let warpletsAddr: string | null = null;
+      try {
+        const res = await Promise.all([
+          funcContract.MINT_PRICE(),
+          funcContract.isFIDUsed(fidNum),
+          funcContract.WARPLETS_CONTRACT_ADDRESS()
+        ]);
+        mintPrice = res[0];
+        used = res[1];
+        warpletsAddr = res[2];
+      } catch (readErr) {
+        console.warn('readOnlyProvider calls failed during eligibility check, falling back to server lookup', readErr);
+        // Fallback: call server-side lookup to fetch warpletsAddr and owner info for this fid/address
+        try {
+          const lookupRes = await fetch(`/api/lookup-warplets?address=${encodeURIComponent(address as string)}&fid=${encodeURIComponent(warpletsFID)}`);
+          if (lookupRes.ok) {
+            const json = await lookupRes.json();
+            warpletsAddr = json.warpletsAddr || null;
+            // ownerOf returned if fid provided
+            const ownerOf = json.ownerOf || null;
+            if (ownerOf && ownerOf.toLowerCase() !== (address || '').toLowerCase()) {
+              setEligible(false);
+              setStatusMessage('Anda bukan pemilik Warplets FID tersebut. Minting hanya untuk pemilik FID.');
+              setChecking(false);
+              return;
+            }
+            // try to detect if fid already used via simulate-mint
+            try {
+              const simRes = await fetch('/api/simulate-mint', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fid: warpletsFID }) });
+              if (simRes.ok) {
+                const simJson = await simRes.json();
+                if (simJson?.matchedError === 'FIDAlreadyUsed') {
+                  setEligible(false);
+                  setStatusMessage('FID sudah pernah digunakan untuk minting.');
+                  setChecking(false);
+                  return;
+                }
+              }
+            } catch (se) {
+              // ignore simulation errors
+            }
+            // fallback mint price
+            mintPrice = ethers.utils.parseEther(MINT_PRICE_ETH);
+          }
+        } catch (lkErr) {
+          console.warn('Server lookup failed', lkErr);
+        }
+      }
+      if (mintPrice) {
+        console.log('checkEligibility: mintPrice wei=', mintPrice.toString(), 'eth=', ethers.utils.formatEther(mintPrice));
+      }
+      const mintPriceFormatted = mintPrice ? ethers.utils.formatEther(mintPrice) : MINT_PRICE_ETH;
 
       if (used) {
         setEligible(false);
