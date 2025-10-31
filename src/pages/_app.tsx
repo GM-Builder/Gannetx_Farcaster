@@ -1,18 +1,17 @@
-import type { AppProps } from 'next/app'
-import Head from 'next/head'
-import '@/styles/globals.css'
+import type { AppProps } from "next/app"
+import Head from "next/head"
+import "@/styles/globals.css"
 import React from 'react'
 import { Toaster } from 'react-hot-toast'
 import { FarcasterProvider } from '@/hooks/useFarcasterContext'
 import FarcasterMiniAppProvider from '@/components/providers/FarcasterMiniAppProvider'
-import { WagmiConfig } from 'wagmi'
-import { wagmiConfig } from '@/config/wagmi'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SuccessAnimationProvider } from '@/components/SuccessAnimationContext'
-
-const queryClient = new QueryClient()
+// sdk is loaded inside FarcasterMiniAppProvider
 
 function FarcasterApp({ Component, pageProps }: AppProps) {
+  // Keep app rendering non-blocking. The FarcasterMiniAppProvider will initialise the SDK
+  // in the background and won't block rendering.
+  
   return (
     <>
       <Head>
@@ -22,32 +21,30 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <QueryClientProvider client={queryClient}>
-        <WagmiConfig config={wagmiConfig}>
-          <FarcasterMiniAppProvider>
-            <FarcasterProvider>
-              <SuccessAnimationProvider>
-                <Toaster
-                  position="top-center"
-                  reverseOrder={false}
-                  toastOptions={{
-                    className: 'custom-toast',
-                    style: {
-                      background: 'rgba(255, 255, 255, 0.9)',
-                      color: '#1f2937',
-                      backdropFilter: 'blur(8px)',
-                    },
-                    duration: 5000,
-                  }}
-                />
-                <main suppressHydrationWarning>
-                  <Component {...pageProps} />
-                </main>
-              </SuccessAnimationProvider>
-            </FarcasterProvider>
-          </FarcasterMiniAppProvider>
-        </WagmiConfig>
-      </QueryClientProvider>
+      {/* Initialize miniapp SDK in background without blocking rendering */}
+      <FarcasterMiniAppProvider>
+        <FarcasterProvider>
+          <SuccessAnimationProvider>
+            <Toaster
+              position="top-center"
+              reverseOrder={false}
+              toastOptions={{
+                className: 'custom-toast',
+                style: {
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  color: '#1f2937',
+                  backdropFilter: 'blur(8px)',
+                },
+                duration: 5000,
+              }}
+            />
+            
+            <main suppressHydrationWarning>
+              <Component {...pageProps} />
+            </main>
+          </SuccessAnimationProvider>
+        </FarcasterProvider>
+      </FarcasterMiniAppProvider>
     </>
   )
 }

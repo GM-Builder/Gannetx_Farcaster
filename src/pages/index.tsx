@@ -420,5 +420,11 @@ const FarcasterContent = () => {
 };
 
 export default function Home() {
-  return <FarcasterContent />;
+  return (
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <FarcasterContent />
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
 }
