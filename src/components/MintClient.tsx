@@ -201,41 +201,35 @@ const MintClient: React.FC = () => {
 
       const contractWithSigner = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, signer);
 
-      // Populate the transaction using the contract (fills data). Then estimate gas
-      // using the readOnlyProvider so we don't rely on the injected signer provider.
-      const populated = await contractWithSigner.populateTransaction.claimFuncaster(ethers.BigNumber.from(warpletsFID), { value: mintPrice });
-
+      // Try to estimate gas using a trusted read-only RPC. If estimate fails
+      // (some RPCs or environments block eth_estimateGas), fall back to letting
+      // the user's wallet/provider submit the transaction via the contract method
+      // which usually triggers a secure gas estimation flow in the wallet UI.
       let gasLimit: ethers.BigNumber | undefined = undefined;
       try {
-        // First try the primary RPC from constants
+        const populated = await contractWithSigner.populateTransaction.claimFuncaster(ethers.BigNumber.from(warpletsFID), { value: mintPrice });
         gasLimit = await readOnlyProvider.estimateGas({ to: populated.to, data: populated.data, value: populated.value });
+        if (gasLimit) gasLimit = gasLimit.mul(110).div(100); // add 10% buffer
       } catch (estErr) {
-        console.warn('Gas estimate failed on primary RPC:', estErr);
-        try {
-          // Fallback RPC (llamarpc)
-          const fallback = new ethers.providers.JsonRpcProvider('https://base.llamarpc.com');
-          gasLimit = await fallback.estimateGas({ to: populated.to, data: populated.data, value: populated.value });
-        } catch (estErr2) {
-          console.warn('Gas estimate failed on fallback RPC:', estErr2);
-          gasLimit = undefined; // we'll proceed without gasLimit
-        }
+        console.warn('Gas estimate failed on readOnlyProvider, will let wallet/provider handle gas:', estErr);
+        gasLimit = undefined;
       }
 
+      // If we have a gasLimit, send a low-level signed transaction via signer.sendTransaction
+      // (this is optional). Otherwise, call the contract method and let the wallet UI handle gas.
+      let tx;
       if (gasLimit) {
-        // Add 10% buffer
-        gasLimit = gasLimit.mul(110).div(100);
+        const populated = await contractWithSigner.populateTransaction.claimFuncaster(ethers.BigNumber.from(warpletsFID), { value: mintPrice });
+        const txRequest: any = {
+          to: populated.to,
+          data: populated.data,
+          value: populated.value,
+          gasLimit,
+        };
+        tx = await signer.sendTransaction(txRequest);
+      } else {
+        tx = await contractWithSigner.claimFuncaster(ethers.BigNumber.from(warpletsFID), { value: mintPrice });
       }
-
-      // Send transaction via signer directly using the populated tx. This avoids
-      // contractWithSigner estimating gas again on the injected provider.
-      const txRequest: any = {
-        to: populated.to,
-        data: populated.data,
-        value: populated.value,
-        ...(gasLimit ? { gasLimit } : {}),
-      };
-
-      const tx = await signer.sendTransaction(txRequest);
       setTxHash(tx.hash);
       toast('Transaction sent — waiting for confirmation...', { icon: '⏳' });
       const receipt = await tx.wait();
