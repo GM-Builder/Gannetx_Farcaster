@@ -203,6 +203,21 @@ const MintClient: React.FC = () => {
         mintPrice = ethers.utils.parseEther(MINT_PRICE_ETH);
       }
 
+      // Ensure the signer address matches the connected account
+      try {
+        const signerAddress = await signer.getAddress();
+        if (address && signerAddress.toLowerCase() !== address.toLowerCase()) {
+          const msg = 'Wallet signer does not match connected account. Please reconnect using the same wallet.';
+          console.warn(msg, { signerAddress, connected: address });
+          setStatusMessage(msg);
+          setMinting(false);
+          return;
+        }
+      } catch (saErr: any) {
+        console.warn('Could not determine signer address', saErr);
+        // continue; we'll still attempt ownership re-check below
+      }
+
       // Re-verify ownership immediately before sending tx
       try {
         const warpletsAddr = await funcRead.WARPLETS_CONTRACT_ADDRESS();
@@ -210,9 +225,9 @@ const MintClient: React.FC = () => {
         const warpletsContract = new ethers.Contract(warpletsAddr, ERC721_MIN_ABI, readOnlyProvider);
         const ownerNow = await warpletsContract.ownerOf(ethers.BigNumber.from(warpletsFID));
         if (ownerNow.toLowerCase() !== address?.toLowerCase()) {
-          const msg = 'FID ownership changed — you are no longer the owner of the provided FID.';
+          const msg = 'FID ownership check failed — according to the Warplets contract you are not the owner.';
           console.warn(msg, { ownerNow, expected: address });
-          setStatusMessage(msg);
+          setStatusMessage(msg + ' Pastikan Anda memilih FID yang benar dan menggunakan wallet yang memiliki Warplets token.');
           setMinting(false);
           return;
         }
