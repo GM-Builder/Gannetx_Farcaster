@@ -4,11 +4,12 @@ import { useAccount, useConnect } from 'wagmi';
 import { ethers } from 'ethers';
 import FUNC_ABI from '@/abis/FuncasterNFTABI.json';
 import { useDirectProvider } from '@/hooks/useEthersProvider';
-import { BASE_SEPOLIA_CHAIN_ID } from '@/utils/constants';
+import { BASE_CHAIN_ID } from '@/utils/constants';
 import { switchToChain } from '@/utils/web3';
 import toast from 'react-hot-toast';
 
-const CONTRACT_ADDRESS = '0x699727f9e01a822efdcf7333073f0461e5914b4e';
+// Deployed FuncasterNFT on Base mainnet (from your deploy output)
+const CONTRACT_ADDRESS = '0xfc3EFAdEBcB41c0a151431F518e06828DA03841a';
 const MINT_PRICE_ETH = '0.00025';
 
 const MintClient: React.FC = () => {
@@ -40,13 +41,13 @@ const MintClient: React.FC = () => {
     setChecking(true);
     try {
       const network = await provider.getNetwork();
-      if (network.chainId !== BASE_SEPOLIA_CHAIN_ID) {
+      if (network.chainId !== BASE_CHAIN_ID) {
         try {
-          await switchToChain(BASE_SEPOLIA_CHAIN_ID);
+          await switchToChain(BASE_CHAIN_ID);
           await new Promise(r => setTimeout(r, 800));
         } catch (switchErr) {
           console.warn('Could not switch chain:', switchErr);
-          setStatusMessage('Silakan pindah ke jaringan Base Sepolia di wallet Anda.');
+          setStatusMessage('Silakan pindah ke jaringan Base (mainnet) di wallet Anda.');
           setChecking(false);
           return;
         }
@@ -209,7 +210,7 @@ const MintClient: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-white to-cyan-50 dark:from-slate-900 dark:to-slate-800 py-12 px-4">
       <div className="max-w-2xl mx-auto bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-slate-700">
-        <h1 className="text-2xl font-bold mb-2">Mint Funcaster NFT (Base Sepolia)</h1>
+  <h1 className="text-2xl font-bold mb-2">Mint Funcaster NFT (Base)</h1>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">Contract: <code className="font-mono text-xs">{CONTRACT_ADDRESS}</code></p>
 
         <div className="grid grid-cols-1 gap-4">
@@ -253,7 +254,7 @@ const MintClient: React.FC = () => {
             <div className="flex gap-3">
               <button onClick={doMint} disabled={minting} className="px-4 py-2 bg-emerald-500 text-white rounded-lg">{minting ? 'Minting...' : `Mint — ${MINT_PRICE_ETH} ETH`}</button>
               {txHash && (
-                <a href={`https://sepolia.basescan.org/tx/${txHash}`} target="_blank" rel="noreferrer" className="text-sm text-cyan-600">View tx</a>
+                <a href={`https://basescan.org/tx/${txHash}`} target="_blank" rel="noreferrer" className="text-sm text-cyan-600">View tx</a>
               )}
             </div>
           )}
