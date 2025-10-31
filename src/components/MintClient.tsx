@@ -54,7 +54,10 @@ const MintClient: React.FC = () => {
     setChecking(true);
     try {
       const network = await provider.getNetwork();
-      if (network.chainId !== BASE_CHAIN_ID) {
+      // support ethers v5 and v6 network shapes
+  const netAny: any = network;
+  const networkChainId = netAny?.chainId ?? netAny?.chain?.id ?? netAny?.id ?? netAny;
+      if (networkChainId !== BASE_CHAIN_ID) {
         try {
           await switchToChain(BASE_CHAIN_ID);
           await new Promise(r => setTimeout(r, 800));
@@ -69,8 +72,9 @@ const MintClient: React.FC = () => {
   // Use readOnlyProvider for RPC calls to avoid unsupported-method errors from in-wallet providers
   const funcContract = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, readOnlyProvider);
 
-      const mintPrice = await funcContract.MINT_PRICE();
-      const mintPriceFormatted = ethers.utils.formatEther(mintPrice);
+  const mintPrice = await funcContract.MINT_PRICE();
+  console.log('checkEligibility: mintPrice wei=', mintPrice.toString(), 'eth=', ethers.utils.formatEther(mintPrice));
+  const mintPriceFormatted = ethers.utils.formatEther(mintPrice);
 
       const fidNum = ethers.BigNumber.from(warpletsFID);
       const used = await funcContract.isFIDUsed(fidNum);
@@ -199,6 +203,26 @@ const MintClient: React.FC = () => {
         mintPrice = ethers.utils.parseEther(MINT_PRICE_ETH);
       }
 
+      // Re-verify ownership immediately before sending tx
+      try {
+        const warpletsAddr = await funcRead.WARPLETS_CONTRACT_ADDRESS();
+        const ERC721_MIN_ABI = ['function ownerOf(uint256 tokenId) view returns (address)'];
+        const warpletsContract = new ethers.Contract(warpletsAddr, ERC721_MIN_ABI, readOnlyProvider);
+        const ownerNow = await warpletsContract.ownerOf(ethers.BigNumber.from(warpletsFID));
+        if (ownerNow.toLowerCase() !== address?.toLowerCase()) {
+          const msg = 'FID ownership changed — you are no longer the owner of the provided FID.';
+          console.warn(msg, { ownerNow, expected: address });
+          setStatusMessage(msg);
+          setMinting(false);
+          return;
+        }
+      } catch (ownerErr: any) {
+        console.warn('Ownership re-check failed before mint, aborting', ownerErr);
+        setStatusMessage('Gagal memverifikasi kepemilikan FID sebelum mint. Coba lagi.');
+        setMinting(false);
+        return;
+      }
+
       const contractWithSigner = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, signer);
 
       // Try to estimate gas using a trusted read-only RPC. If estimate fails
@@ -212,7 +236,12 @@ const MintClient: React.FC = () => {
         if (gasLimit) gasLimit = gasLimit.mul(110).div(100); // add 10% buffer
       } catch (estErr) {
         console.warn('Gas estimate failed on readOnlyProvider, will let wallet/provider handle gas:', estErr);
-        gasLimit = undefined;
+        try {
+          gasLimit = ethers.BigNumber.from(300000);
+          console.log('Using fallback gasLimit', gasLimit.toString());
+        } catch (be) {
+          gasLimit = undefined;
+        }
       }
 
       // If we have a gasLimit, send a low-level signed transaction via signer.sendTransaction
