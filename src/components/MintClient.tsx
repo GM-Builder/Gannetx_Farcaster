@@ -2,9 +2,9 @@
 import React, { useState, useCallback } from 'react';
 import { useAccount, useConnect } from 'wagmi';
 import { ethers } from 'ethers';
+import { getChainRpcUrl, BASE_CHAIN_ID } from '@/utils/constants';
 import FUNC_ABI from '@/abis/FuncasterNFTABI.json';
 import { useDirectProvider } from '@/hooks/useEthersProvider';
-import { BASE_CHAIN_ID } from '@/utils/constants';
 import { switchToChain } from '@/utils/web3';
 import toast from 'react-hot-toast';
 
@@ -16,6 +16,19 @@ const MintClient: React.FC = () => {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { provider, signer, loading: providerLoading } = useDirectProvider();
+
+  // Use a public RPC provider for read-only calls. Some in-wallet providers (miniapp/frame)
+  // do not implement all eth_call methods; using a JsonRpcProvider for reads avoids
+  // Provider.UnsupportedMethodError and missing revert data during call attempts.
+  const readOnlyProvider = React.useMemo(() => {
+    try {
+      const rpc = getChainRpcUrl(BASE_CHAIN_ID) || 'https://mainnet.base.org';
+      return new ethers.providers.JsonRpcProvider(rpc);
+    } catch (e) {
+      console.warn('Failed to create readOnlyProvider, falling back to wallet provider', e);
+      return provider as any;
+    }
+  }, [provider]);
 
   const [warpletsFID, setWarpletsFID] = useState<string>('');
   const [checking, setChecking] = useState(false);
@@ -53,8 +66,8 @@ const MintClient: React.FC = () => {
         }
       }
 
-      const readProvider = provider;
-      const funcContract = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, readProvider);
+  // Use readOnlyProvider for RPC calls to avoid unsupported-method errors from in-wallet providers
+  const funcContract = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, readOnlyProvider);
 
       const mintPrice = await funcContract.MINT_PRICE();
       const mintPriceFormatted = ethers.utils.formatEther(mintPrice);
@@ -83,7 +96,7 @@ const MintClient: React.FC = () => {
         return;
       }
 
-      const warpletsContract = new ethers.Contract(warpletsAddr, ERC721_MIN_ABI, readProvider);
+  const warpletsContract = new ethers.Contract(warpletsAddr, ERC721_MIN_ABI, readOnlyProvider);
       let ownerOfFID = null;
       try {
         ownerOfFID = await warpletsContract.ownerOf(fidNum);
@@ -101,7 +114,7 @@ const MintClient: React.FC = () => {
         return;
       }
 
-      const balance = await provider.getBalance(address as string);
+  const balance = await readOnlyProvider.getBalance(address as string);
       const balanceEth = ethers.utils.formatEther(balance);
       if (balance.lt(mintPrice)) {
         setEligible(false);
@@ -127,8 +140,9 @@ const MintClient: React.FC = () => {
     const detectOwnerToken = async () => {
       if (!isConnected || !provider || !address) return;
       try {
-        const funcContract = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, provider);
-        const warpletsAddr = await funcContract.WARPLETS_CONTRACT_ADDRESS();
+  // Use readOnlyProvider for auto-detection reads
+  const funcContract = new ethers.Contract(CONTRACT_ADDRESS, FUNC_ABI, readOnlyProvider);
+  const warpletsAddr = await funcContract.WARPLETS_CONTRACT_ADDRESS();
         if (!warpletsAddr || warpletsAddr === ethers.constants.AddressZero) {
           if (mounted) setStatusMessage('Warplets contract not found on Funcaster contract.');
           return;
@@ -139,8 +153,8 @@ const MintClient: React.FC = () => {
           'function tokenOfOwnerByIndex(address,uint256) view returns (uint256)'
         ];
 
-        const warpletsContract = new ethers.Contract(warpletsAddr, ERC721_ENUM_ABI, provider);
-        const balance = await warpletsContract.balanceOf(address);
+  const warpletsContract = new ethers.Contract(warpletsAddr, ERC721_ENUM_ABI, readOnlyProvider);
+  const balance = await warpletsContract.balanceOf(address);
         if (balance && balance.gt(0)) {
           const tokenId = await warpletsContract.tokenOfOwnerByIndex(address, 0);
           if (mounted) {
