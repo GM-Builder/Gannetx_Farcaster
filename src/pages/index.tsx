@@ -142,7 +142,7 @@ const FarcasterContent = () => {
   return (
     <div className="min-h-screen bg-[#050608] text-white">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20 backdrop-blur-md bg-white/90 dark:bg-gray-900/90">
+      <div className="bg-[#050608] border-b border-white/5 sticky top-0 z-20 backdrop-blur-md bg-[#050608]/90">
         <div className="px-3 py-3">
           <div className="flex items-center justify-between">
             <img
@@ -300,60 +300,64 @@ const FarcasterContent = () => {
               >
                 {isConnected && address ? (
                   <>
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg border border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-16 h-16 rounded-full overflow-hidden ring-4 ring-cyan-400/30">
-                          <img
-                            src={getAvatarUrl(address)}
-                            alt="Avatar"
-                            className="w-full h-full"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Your Address</p>
-                          <div
-                            onClick={handleCopyAddress}
-                            className="flex items-center gap-2 font-mono text-sm bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                          >
-                            <span className="text-gray-800 dark:text-gray-200">
-                              {formatAddress(address)}
-                            </span>
-                            <FaCopy className={`text-xs ${copySuccess ? 'text-green-500' : 'text-gray-400'}`} />
+                    {/* Consolidated Profile Card */}
+                    <div className="bg-[#0B0E14] rounded-xl p-6 shadow-xl border border-white/5 relative overflow-hidden group">
+                      {/* Decorative Background */}
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-cyan-500/10 transition-colors duration-500" />
+
+                      <div className="relative z-10">
+                        <div className="flex items-center gap-4 mb-6">
+                          {/* Avatar Logic */}
+                          <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-white/10 shadow-lg">
+                            {user?.pfpUrl ? (
+                              <img src={user.pfpUrl} alt={user.username || 'User'} className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={getAvatarUrl(address)} alt="Avatar" className="w-full h-full object-cover" />
+                            )}
                           </div>
-                        </div>
-                      </div>
 
-                      <button
-                        onClick={() => disconnect()}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                      >
-                        <FaSignOutAlt />
-                        <span className="font-medium">Disconnect</span>
-                      </button>
-                    </div>
+                          <div className="flex-1 min-w-0">
+                            {/* Name Logic */}
+                            <h2 className="text-xl font-bold text-white truncate">
+                              {user?.displayName || user?.username || 'Hunter'}
+                            </h2>
 
-                    {user && (
-                      <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
-                        <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold mb-3">FARCASTER ACCOUNT</p>
-                        <div className="flex items-center gap-3">
-                          {user.pfpUrl ? (
-                            <img src={user.pfpUrl} alt={user.username || 'User'} className="w-12 h-12 rounded-full" />
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center">
-                              <FaUser className="text-white" />
+                            {/* Address & ID Logic */}
+                            <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+                              <div
+                                onClick={handleCopyAddress}
+                                className="flex items-center gap-1.5 hover:text-cyan-400 cursor-pointer transition-colors bg-white/5 px-2 py-1 rounded-lg"
+                              >
+                                <span className="font-mono">{formatAddress(address)}</span>
+                                <FaCopy className="text-[10px]" />
+                              </div>
+                              <span className="text-gray-600">•</span>
+                              <span className="font-medium">
+                                {user?.fid ? `FID: ${user.fid}` : `ID: ${parseInt(address.slice(2, 10), 16) % 100000}`}
+                              </span>
                             </div>
-                          )}
-                          <div>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {user.displayName || user.username || 'Farcaster User'}
-                            </p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">
-                              @{user.username} • FID: {user.fid}
-                            </p>
                           </div>
                         </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                          <button
+                            onClick={handleCopyAddress}
+                            className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-medium text-gray-300 transition-colors flex items-center justify-center gap-2 border border-white/5"
+                          >
+                            <FaCopy className="text-xs" />
+                            Copy Address
+                          </button>
+                          <button
+                            onClick={() => disconnect()}
+                            className="flex-1 py-2.5 bg-red-500/10 hover:bg-red-500/20 rounded-xl text-sm font-medium text-red-500 transition-colors flex items-center justify-center gap-2 border border-red-500/20"
+                          >
+                            <FaSignOutAlt className="text-xs" />
+                            Disconnect
+                          </button>
+                        </div>
                       </div>
-                    )}
+                    </div>
 
                     <div className="space-y-4">
                       <h3 className="text-base font-bold text-gray-900 dark:text-white">Your Statistics</h3>

@@ -14,10 +14,29 @@ import { SIMPLE_DEPLOY_ADDRESSES, SIMPLE_DEPLOY_ABI } from '@/utils/constantsDep
 import { switchToChain, getProvider } from '@/utils/web3';
 import ChainLogo from '@/components/ChainLogo';
 
-// Define Chain IDs present in Farcaster constants or just raw numbers for now if not ported
+// Define Chain IDs using the values from the main app
 const SUPPORTED_CHAINS_LOCAL: Record<number, { chainName: string; logoUrl: string; nativeCurrency: { symbol: string } }> = {
-    8453: { chainName: 'Base', logoUrl: '/base-logo.png', nativeCurrency: { symbol: 'ETH' } }, // Adjust logo path logic if needed, ChainLogo handles it usually
-    // Add others if needed
+    // Mainnets
+    8453: { chainName: 'Base', logoUrl: '/assets/chains/base.png', nativeCurrency: { symbol: 'ETH' } },
+    1868: { chainName: 'Soneium', logoUrl: '/assets/chains/soneium.png', nativeCurrency: { symbol: 'ETH' } },
+    57073: { chainName: 'Ink', logoUrl: '/assets/chains/ink.png', nativeCurrency: { symbol: 'ETH' } },
+    10: { chainName: 'Optimism', logoUrl: '/assets/chains/optimism.png', nativeCurrency: { symbol: 'ETH' } },
+    1135: { chainName: 'Lisk', logoUrl: '/assets/chains/lisk.png', nativeCurrency: { symbol: 'ETH' } },
+    59144: { chainName: 'Linea', logoUrl: '/assets/chains/linea.png', nativeCurrency: { symbol: 'ETH' } },
+
+    // Testnets
+    10218: { chainName: 'Tea Sepolia', logoUrl: '/assets/chains/tea.png', nativeCurrency: { symbol: 'TEA' } },
+    84532: { chainName: 'Base Sepolia', logoUrl: '/assets/chains/base.png', nativeCurrency: { symbol: 'ETH' } },
+    1946: { chainName: 'Soneium Testnet', logoUrl: '/assets/chains/soneium.png', nativeCurrency: { symbol: 'ETH' } },
+    763373: { chainName: 'Ink Sepolia', logoUrl: '/assets/chains/ink.png', nativeCurrency: { symbol: 'ETH' } },
+    11155420: { chainName: 'OP Sepolia', logoUrl: '/assets/chains/optimism.png', nativeCurrency: { symbol: 'ETH' } },
+    421614: { chainName: 'Arbitrum Sepolia', logoUrl: '/assets/chains/arbitrum.png', nativeCurrency: { symbol: 'ETH' } },
+    10143: { chainName: 'Monad Testnet', logoUrl: '/assets/chains/monad.png', nativeCurrency: { symbol: 'MON' } },
+    6342: { chainName: 'MegaETH Testnet', logoUrl: '/assets/chains/megaeth.png', nativeCurrency: { symbol: 'ETH' } },
+    1301: { chainName: 'Unichain Sepolia', logoUrl: '/assets/chains/unichain.png', nativeCurrency: { symbol: 'ETH' } },
+    11124: { chainName: 'Abstract Testnet', logoUrl: '/assets/chains/abstract.png', nativeCurrency: { symbol: 'ETH' } },
+    4202: { chainName: 'Lisk Sepolia', logoUrl: '/assets/chains/lisk.png', nativeCurrency: { symbol: 'ETH' } },
+    28802: { chainName: 'Incentiv Testnet', logoUrl: '/assets/chains/incentiv.png', nativeCurrency: { symbol: 'TCENT' } },
 };
 
 interface SimpleDeployProps {
@@ -157,22 +176,31 @@ const SimpleDeploy: React.FC<SimpleDeployProps> = ({ onBack }) => {
                 </div>
 
                 {/* Chain Selection - simplified for now since we focus on Base */}
+                {/* Chain Selection */}
                 <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-300 mb-3">Target Network</label>
-                    <div className="flex gap-3">
-                        <button
-                            onClick={() => handleChainSelect(BASE_CHAIN_ID)}
-                            className={`flex items-center gap-2 px-4 py-3 rounded-xl border transition-all ${selectedChain === BASE_CHAIN_ID
-                                ? 'bg-cyan-500/10 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
-                                : 'bg-[#0B0E14] border-white/10 hover:border-white/20'}`}
-                        >
-                            <ChainLogo
-                                logoUrl={SUPPORTED_CHAINS_LOCAL[BASE_CHAIN_ID].logoUrl}
-                                altText="Base"
-                                size="sm"
-                            />
-                            <span className={`text-sm font-medium ${selectedChain === BASE_CHAIN_ID ? 'text-white' : 'text-gray-400'}`}>Base</span>
-                        </button>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                        {Object.entries(SUPPORTED_CHAINS_LOCAL).map(([chainIdStr, chain]) => {
+                            const cid = parseInt(chainIdStr, 10);
+                            return (
+                                <button
+                                    key={cid}
+                                    onClick={() => handleChainSelect(cid)}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${selectedChain === cid
+                                        ? 'bg-cyan-500/10 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                                        : 'bg-[#0B0E14] border-white/10 hover:border-white/20'}`}
+                                >
+                                    <ChainLogo
+                                        logoUrl={chain.logoUrl}
+                                        altText={chain.chainName}
+                                        size="sm"
+                                    />
+                                    <span className={`text-xs font-medium truncate ${selectedChain === cid ? 'text-white' : 'text-gray-400'}`}>
+                                        {chain.chainName}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 

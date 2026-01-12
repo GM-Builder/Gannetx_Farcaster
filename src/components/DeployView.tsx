@@ -14,12 +14,15 @@ const DeployView: React.FC = () => {
     if (mode === 'token') {
         return (
             <div className="relative">
-                <button
-                    onClick={() => setMode('menu')}
-                    className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-black/40 text-gray-400 text-xs rounded-lg border border-white/10 hover:bg-white/10 backdrop-blur"
-                >
-                    ← Back to Menu
-                </button>
+                <div className="flex items-center gap-2 mb-4">
+                    <button
+                        onClick={() => setMode('menu')}
+                        className="px-3 py-1.5 bg-black/40 text-gray-400 text-xs rounded-lg border border-white/10 hover:bg-white/10 backdrop-blur flex items-center gap-1"
+                    >
+                        ← Back to Menu
+                    </button>
+                    <div className="h-px flex-1 bg-white/5"></div>
+                </div>
                 <TokenFactory />
             </div>
         );

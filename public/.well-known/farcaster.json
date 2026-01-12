@@ -9,27 +9,25 @@
     "splashImageUrl": "https://gannetx.vercel.app/icon.png",
     "splashBackgroundColor": "#1A1A2E",
     "webhookUrl": "https://gannetx.vercel.app/api/webhook",
-    "subtitle": "Your MultiChain GM Hub",
-    "description": "The ultimate multi-chain GM hub. Track your daily Web3 check-ins, build streaks, visualize on personalized heatmaps, and climb the leaderboard.",
+    "subtitle": "The Multi-Chain Utility Portal",
+    "description": "The ultimate multi-chain Utility Portal. Track GMs • Chat on-chain • Deploy smart contracts with zero code.",
     "primaryCategory": "social",
     "tags": [
+      "utility",
       "social",
-      "gm",
-      "community",
-      "check-ins"
+      "deploy",
+      "gm"
     ],
     "heroImageUrl": "https://gannetx.vercel.app/image.png",
-    "tagline": "Build, streak, earn ",
-    "ogTitle": "GannetX - Multichain GM Hub"
+    "tagline": "Track GMs. Deploy smart contracts.",
+    "ogTitle": "GannetX: The Multi-Chain Utility Portal"
   },
   "accountAssociation": {
     "header": "eyJmaWQiOjM5MDUyMSwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDQyYjM1RDc2MWRmNWE1NTQ4Nzc1OGZGMEQ3MjM3NzEzNTg4NjI3MzcifQ",
     "payload": "eyJkb21haW4iOiJnYW5uZXR4LnZlcmNlbC5hcHAifQ",
     "signature": "sJ8R6H4LWm0CatiffdGrIBe3igSqr5fDlWeVLvfq8/08USOqdiiCFV9AF1tCHRZdsfGqw3spYOVVCzuKhaXQnxw="
   },
-  
   "baseBuilder": {
     "ownerAddress": "0xBB19a659c5Ab6eaF0132C9E45b970342332b43d0"
   }
-
 }
