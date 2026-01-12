@@ -6,38 +6,21 @@ import { ArrowLeft, Zap, AlertCircle } from 'lucide-react';
 import { useWalletState } from '@/hooks/useWalletState';
 import {
     BASE_CHAIN_ID,
-    // Add other chain IDs if defined in constants, or mock them
-    // SONEIUM_CHAIN_ID, INK_CHAIN_ID, etc. might not be in Farcaster constants.ts yet.
-    // I will stick to Base for now as primary, but keep logic generic.
+    SONEIUM_CHAIN_ID,
+    INK_CHAIN_ID,
+    OP_CHAIN_ID,
+    LISK_CHAIN_ID,
+    LINEA_CHAIN_ID,
+    SUPPORTED_CHAINS
 } from '@/utils/constants';
 import { SIMPLE_DEPLOY_ADDRESSES, SIMPLE_DEPLOY_ABI } from '@/utils/constantsDeploy';
 import { switchToChain, getProvider } from '@/utils/web3';
 import ChainLogo from '@/components/ChainLogo';
 
-// Define Chain IDs using the values from the main app
-const SUPPORTED_CHAINS_LOCAL: Record<number, { chainName: string; logoUrl: string; nativeCurrency: { symbol: string } }> = {
-    // Mainnets
-    8453: { chainName: 'Base', logoUrl: '/assets/chains/base.png', nativeCurrency: { symbol: 'ETH' } },
-    1868: { chainName: 'Soneium', logoUrl: '/assets/chains/soneium.png', nativeCurrency: { symbol: 'ETH' } },
-    57073: { chainName: 'Ink', logoUrl: '/assets/chains/ink.png', nativeCurrency: { symbol: 'ETH' } },
-    10: { chainName: 'Optimism', logoUrl: '/assets/chains/optimism.png', nativeCurrency: { symbol: 'ETH' } },
-    1135: { chainName: 'Lisk', logoUrl: '/assets/chains/lisk.png', nativeCurrency: { symbol: 'ETH' } },
-    59144: { chainName: 'Linea', logoUrl: '/assets/chains/linea.png', nativeCurrency: { symbol: 'ETH' } },
-
-    // Testnets
-    10218: { chainName: 'Tea Sepolia', logoUrl: '/assets/chains/tea.png', nativeCurrency: { symbol: 'TEA' } },
-    84532: { chainName: 'Base Sepolia', logoUrl: '/assets/chains/base.png', nativeCurrency: { symbol: 'ETH' } },
-    1946: { chainName: 'Soneium Testnet', logoUrl: '/assets/chains/soneium.png', nativeCurrency: { symbol: 'ETH' } },
-    763373: { chainName: 'Ink Sepolia', logoUrl: '/assets/chains/ink.png', nativeCurrency: { symbol: 'ETH' } },
-    11155420: { chainName: 'OP Sepolia', logoUrl: '/assets/chains/optimism.png', nativeCurrency: { symbol: 'ETH' } },
-    421614: { chainName: 'Arbitrum Sepolia', logoUrl: '/assets/chains/arbitrum.png', nativeCurrency: { symbol: 'ETH' } },
-    10143: { chainName: 'Monad Testnet', logoUrl: '/assets/chains/monad.png', nativeCurrency: { symbol: 'MON' } },
-    6342: { chainName: 'MegaETH Testnet', logoUrl: '/assets/chains/megaeth.png', nativeCurrency: { symbol: 'ETH' } },
-    1301: { chainName: 'Unichain Sepolia', logoUrl: '/assets/chains/unichain.png', nativeCurrency: { symbol: 'ETH' } },
-    11124: { chainName: 'Abstract Testnet', logoUrl: '/assets/chains/abstract.png', nativeCurrency: { symbol: 'ETH' } },
-    4202: { chainName: 'Lisk Sepolia', logoUrl: '/assets/chains/lisk.png', nativeCurrency: { symbol: 'ETH' } },
-    28802: { chainName: 'Incentiv Testnet', logoUrl: '/assets/chains/incentiv.png', nativeCurrency: { symbol: 'TCENT' } },
-};
+// Filter for only Mainnet chains that are enabled in Simple Deploy
+const DISPLAY_CHAINS = Object.values(SUPPORTED_CHAINS)
+    .filter(chain => !chain.isTestnet)
+    .sort((a, b) => a.chainName.localeCompare(b.chainName));
 
 interface SimpleDeployProps {
     onBack?: () => void; // Optional if used in a tab
@@ -180,8 +163,9 @@ const SimpleDeploy: React.FC<SimpleDeployProps> = ({ onBack }) => {
                 <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-300 mb-3">Target Network</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
-                        {Object.entries(SUPPORTED_CHAINS_LOCAL).map(([chainIdStr, chain]) => {
-                            const cid = parseInt(chainIdStr, 10);
+                        {DISPLAY_CHAINS.map((chain) => {
+                            // Extract ID from chainId hex string (e.g. "0x2105") -> number
+                            const cid = parseInt(chain.chainId, 16);
                             return (
                                 <button
                                     key={cid}
