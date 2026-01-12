@@ -11,10 +11,11 @@ import {
     OP_CHAIN_ID,
     LISK_CHAIN_ID,
     LINEA_CHAIN_ID,
-    SUPPORTED_CHAINS
+    SUPPORTED_CHAINS,
+    getChainRpcUrl // Added import
 } from '@/utils/constants';
 import { SIMPLE_DEPLOY_ADDRESSES, SIMPLE_DEPLOY_ABI } from '@/utils/constantsDeploy';
-import { switchToChain, getProvider } from '@/utils/web3';
+import { switchToChain, getProvider, delay } from '@/utils/web3';
 import ChainLogo from '@/components/ChainLogo';
 
 // Filter for only Mainnet chains that are enabled in Simple Deploy
@@ -97,7 +98,7 @@ const SimpleDeploy: React.FC<SimpleDeployProps> = ({ onBack }) => {
 
         if (web3State.chainId !== selectedChain) {
             await handleChainSelect(selectedChain);
-            return; // Let user click again or auto interact? Better to stop and let them confirm
+            return;
         }
 
         setIsDeploying(true);
@@ -113,12 +114,51 @@ const SimpleDeploy: React.FC<SimpleDeployProps> = ({ onBack }) => {
             toast.loading('Confirm transaction...', { id: toastId });
             const tx = await contract.deployContract(message, { value: fee });
 
-            toast.loading('Deploying...', { id: toastId });
-            const receipt = await tx.wait();
+            toast.loading('Deploying (waiting for confirmation)...', { id: toastId });
 
-            // Find event
+            // --- ROBUST RECEIPT WAITING START ---
+            // Instead of waiting on the signer's provider (which might hang for Smart Wallets),
+            // we use a public RPC provider to check for the transaction receipt.
+            const rpcUrl = getChainRpcUrl(selectedChain);
+            const publicProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
+
+            let receipt = null;
+            let attempts = 0;
+            const maxAttempts = 60; // Wait up to 3 minutes (3s * 60)
+
+            while (!receipt && attempts < maxAttempts) {
+                try {
+                    receipt = await publicProvider.getTransactionReceipt(tx.hash);
+                    if (!receipt) {
+                        await delay(3000);
+                        attempts++;
+                    }
+                } catch (e) {
+                    console.warn(`Error fetching receipt attempt ${attempts}:`, e);
+                    await delay(3000);
+                    attempts++;
+                }
+            }
+
+            if (!receipt) {
+                // Try one last wait on the original tx promise if polling failed
+                try {
+                    receipt = await tx.wait();
+                } catch (e) {
+                    console.error("Final wait failed", e);
+                    throw new Error('Transaction sent but receipt not found. Check explorer.');
+                }
+            }
+            // --- ROBUST RECEIPT WAITING END ---
+
+            // Find event using the contract interface
             const event = receipt.logs.find((log: any) => {
-                try { return contract.interface.parseLog(log).name === 'ContractDeployed'; } catch { return false; }
+                try {
+                    // Need to check against the contract interface. 
+                    // Note: If using public provider, 'contract' object created with signer works for parsing 
+                    // because interface is the same.
+                    return contract.interface.parseLog(log).name === 'ContractDeployed';
+                } catch { return false; }
             });
 
             if (event) {
@@ -126,7 +166,12 @@ const SimpleDeploy: React.FC<SimpleDeployProps> = ({ onBack }) => {
                 const addr = parsed.args.contractAddress;
                 toast.success(`Deployed at: ${addr.slice(0, 6)}...${addr.slice(-4)}`, { id: toastId });
             } else {
-                toast.success('Deployed successfully!', { id: toastId });
+                // If event not found (e.g. internal tx), assume success if status is 1
+                if (receipt.status === 1) {
+                    toast.success('Deployed successfully!', { id: toastId });
+                } else {
+                    throw new Error('Transaction failed on-chain.');
+                }
             }
             setMessage('');
 
@@ -158,7 +203,6 @@ const SimpleDeploy: React.FC<SimpleDeployProps> = ({ onBack }) => {
                     </div>
                 </div>
 
-                {/* Chain Selection - simplified for now since we focus on Base */}
                 {/* Chain Selection */}
                 <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-300 mb-3">Target Network</label>

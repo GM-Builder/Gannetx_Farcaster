@@ -157,7 +157,7 @@ const ChatView: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-80px)] bg-[#0B0E14] text-white overflow-hidden pb-16">
+        <div className="flex flex-col h-[calc(100vh-80px)] bg-[#050608] text-white overflow-hidden pb-16">
             {/* Header */}
             <div className="flex-shrink-0 p-4 border-b border-white/5 bg-[#0B0E14]/80 backdrop-blur flex justify-between items-center z-10">
                 <div className="flex items-center gap-3">

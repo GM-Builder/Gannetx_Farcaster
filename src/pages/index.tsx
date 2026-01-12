@@ -301,9 +301,8 @@ const FarcasterContent = () => {
                 {isConnected && address ? (
                   <>
                     {/* Consolidated Profile Card */}
-                    <div className="bg-[#0B0E14] rounded-xl p-6 shadow-xl border border-white/5 relative overflow-hidden group">
-                      {/* Decorative Background */}
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-cyan-500/10 transition-colors duration-500" />
+                    <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-2xl border border-cyan-200 dark:border-cyan-800 shadow-lg p-6 relative overflow-hidden group">
+                      {/* Decorative Background - kept subtle */}
 
                       <div className="relative z-10">
                         <div className="flex items-center gap-4 mb-6">

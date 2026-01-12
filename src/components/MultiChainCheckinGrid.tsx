@@ -408,6 +408,8 @@ const MultiChainCheckinGrid: React.FC<MultiChainCheckinGridProps> = ({
 
   // Get all supported chains without filtering
   const filteredChains: Chain[] = getSupportedChainIds()
+    // Filter out testnets
+    .filter(id => !SUPPORTED_CHAINS[id].isTestnet)
     // Sort logic moved here directly: first by status (can checkin), then by name
     .sort((aId, bId) => {
       const a = chainStatusMap[aId] || { canCheckin: true, timeUntilNextCheckin: 0 };
