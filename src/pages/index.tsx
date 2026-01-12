@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { WagmiProvider, useAccount, useConnect, useDisconnect } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { OnchainKitProvider } from '@coinbase/onchainkit';
 import { base } from 'viem/chains';
 import { wagmiConfig } from '@/config/wagmi';
 import { useFarcasterUser } from '@/hooks/useFarcasterContext';
@@ -131,10 +132,10 @@ const FarcasterContent = () => {
 
   if (userLoading || !isReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-100 via-white to-cyan-100 dark:from-black dark:via-gray-900 dark:to-cyan-800">
+      <div className="min-h-screen flex items-center justify-center bg-[#050608]">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading Farcaster...</p>
+          <p className="text-gray-400">Loading...</p>
         </div>
       </div>
     );
