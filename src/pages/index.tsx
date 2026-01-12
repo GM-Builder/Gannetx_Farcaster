@@ -7,7 +7,7 @@ import { useFarcasterUser } from '@/hooks/useFarcasterContext';
 import { useDirectProvider } from '@/hooks/useEthersProvider';
 import FixedMultiChainCheckinGrid from '@/components/MultiChainCheckinGrid';
 import BottomNav, { TabType } from '@/components/BottomNav';
-import QuestDashboard from '@/components/QuestDashboard';
+import HeroSection from '@/components/HeroSection';
 import LeaderboardView from '@/components/LeaderboardView';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaWallet, FaCopy, FaSignOutAlt, FaExclamationCircle } from 'react-icons/fa';
@@ -140,7 +140,7 @@ const FarcasterContent = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-cyan-100 dark:from-black dark:via-gray-900 dark:to-cyan-800">
+    <div className="min-h-screen bg-[#050608] text-white">
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20 backdrop-blur-md bg-white/90 dark:bg-gray-900/90">
         <div className="px-3 py-3">
@@ -201,7 +201,7 @@ const FarcasterContent = () => {
                 className="space-y-4 py-4"
               >
                 {isConnected && address && (
-                  <QuestDashboard address={address} />
+                  <HeroSection address={address} />
                 )}
 
                 {providerError && (
