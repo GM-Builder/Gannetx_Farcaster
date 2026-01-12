@@ -6,17 +6,20 @@ import { ArrowLeft, Zap, AlertCircle } from 'lucide-react';
 import { useWalletState } from '@/hooks/useWalletState';
 import {
     BASE_CHAIN_ID,
-    SONEIUM_CHAIN_ID,
-    INK_CHAIN_ID,
-    OP_CHAIN_ID,
-    LISK_CHAIN_ID,
-    LINEA_CHAIN_ID,
     SUPPORTED_CHAINS,
-    getChainRpcUrl // Added import
 } from '@/utils/constants';
 import { SIMPLE_DEPLOY_ADDRESSES, SIMPLE_DEPLOY_ABI } from '@/utils/constantsDeploy';
-import { switchToChain, getProvider, delay } from '@/utils/web3';
+import { switchToChain, getProvider } from '@/utils/web3';
 import ChainLogo from '@/components/ChainLogo';
+import {
+    Transaction,
+    TransactionButton,
+    TransactionStatus,
+    TransactionStatusLabel,
+    TransactionStatusAction,
+    LifecycleStatus
+} from '@coinbase/onchainkit/transaction';
+import { useAccount } from 'wagmi';
 
 // Filter for only Mainnet chains that are enabled in Simple Deploy
 const DISPLAY_CHAINS = Object.values(SUPPORTED_CHAINS)
@@ -24,14 +27,14 @@ const DISPLAY_CHAINS = Object.values(SUPPORTED_CHAINS)
     .sort((a, b) => a.chainName.localeCompare(b.chainName));
 
 interface SimpleDeployProps {
-    onBack?: () => void; // Optional if used in a tab
+    onBack?: () => void;
 }
 
 const SimpleDeploy: React.FC<SimpleDeployProps> = ({ onBack }) => {
     const { web3State, switchNetwork } = useWalletState();
+    const { address } = useAccount();
     const [selectedChain, setSelectedChain] = useState<number | null>(BASE_CHAIN_ID);
     const [message, setMessage] = useState('');
-    const [isDeploying, setIsDeploying] = useState(false);
     const [deploymentFee, setDeploymentFee] = useState<string>('0');
     const [isSwitchingChain, setIsSwitchingChain] = useState(false);
 
@@ -50,7 +53,6 @@ const SimpleDeploy: React.FC<SimpleDeployProps> = ({ onBack }) => {
             if (!contractAddress) return;
 
             try {
-                // Use web3State provider if available, else getProvider
                 const provider = web3State.provider || getProvider();
                 if (!provider) return;
 
@@ -80,110 +82,38 @@ const SimpleDeploy: React.FC<SimpleDeployProps> = ({ onBack }) => {
         }
     };
 
-    const handleDeploy = async () => {
-        if (!selectedChain) {
-            toast.error('Please select a chain first');
-            return;
-        }
-        if (!web3State.isConnected) {
-            toast.error('Please connect your wallet');
-            return;
-        }
-
-        const contractAddress = SIMPLE_DEPLOY_ADDRESSES[selectedChain];
-        if (!contractAddress || !message) {
-            toast.error('Invalid configuration or message missing');
-            return;
-        }
-
-        if (web3State.chainId !== selectedChain) {
-            await handleChainSelect(selectedChain);
-            return;
-        }
-
-        setIsDeploying(true);
-        const toastId = toast.loading('Preparing deployment...');
-
-        try {
-            const signer = web3State.signer;
-            if (!signer) throw new Error("No signer");
-
-            const contract = new ethers.Contract(contractAddress, SIMPLE_DEPLOY_ABI, signer);
-            const fee = await contract.deploymentFee(); // Refresh fee
-
-            toast.loading('Confirm transaction...', { id: toastId });
-            const tx = await contract.deployContract(message, { value: fee });
-
-            toast.loading('Deploying (waiting for confirmation)...', { id: toastId });
-
-            // --- ROBUST RECEIPT WAITING START ---
-            // Instead of waiting on the signer's provider (which might hang for Smart Wallets),
-            // we use a public RPC provider to check for the transaction receipt.
-            const rpcUrl = getChainRpcUrl(selectedChain);
-            const publicProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
-
-            let receipt = null;
-            let attempts = 0;
-            const maxAttempts = 60; // Wait up to 3 minutes (3s * 60)
-
-            while (!receipt && attempts < maxAttempts) {
-                try {
-                    receipt = await publicProvider.getTransactionReceipt(tx.hash);
-                    if (!receipt) {
-                        await delay(3000);
-                        attempts++;
-                    }
-                } catch (e) {
-                    console.warn(`Error fetching receipt attempt ${attempts}:`, e);
-                    await delay(3000);
-                    attempts++;
-                }
-            }
-
-            if (!receipt) {
-                // Try one last wait on the original tx promise if polling failed
-                try {
-                    receipt = await tx.wait();
-                } catch (e) {
-                    console.error("Final wait failed", e);
-                    throw new Error('Transaction sent but receipt not found. Check explorer.');
-                }
-            }
-            // --- ROBUST RECEIPT WAITING END ---
-
-            // Find event using the contract interface
-            const event = receipt.logs.find((log: any) => {
-                try {
-                    // Need to check against the contract interface. 
-                    // Note: If using public provider, 'contract' object created with signer works for parsing 
-                    // because interface is the same.
-                    return contract.interface.parseLog(log).name === 'ContractDeployed';
-                } catch { return false; }
-            });
-
-            if (event) {
-                const parsed = contract.interface.parseLog(event);
-                const addr = parsed.args.contractAddress;
-                toast.success(`Deployed at: ${addr.slice(0, 6)}...${addr.slice(-4)}`, { id: toastId });
-            } else {
-                // If event not found (e.g. internal tx), assume success if status is 1
-                if (receipt.status === 1) {
-                    toast.success('Deployed successfully!', { id: toastId });
-                } else {
-                    throw new Error('Transaction failed on-chain.');
-                }
-            }
+    const handleOnStatus = (status: LifecycleStatus) => {
+        console.log('Transaction Status:', status);
+        // Optional: Add toast updates based on status if needed, but OnchainKit handles UI well.
+        if (status.statusName === 'success') {
+            toast.success('Contract Deployed Successfully!');
             setMessage('');
-
-        } catch (error: any) {
-            console.error(error);
-            toast.error(error.reason || error.message || 'Deployment failed', { id: toastId });
-        } finally {
-            setIsDeploying(false);
         }
     };
 
-    const isChainEnabled = (cid: number) => !!SIMPLE_DEPLOY_ADDRESSES[cid];
+    // Construct calls for OnchainKit
+    const getTransactionCalls = () => {
+        if (!selectedChain || !message) return [];
+        const contractAddress = SIMPLE_DEPLOY_ADDRESSES[selectedChain];
+        if (!contractAddress) return [];
+
+        try {
+            // Pre-encode data to avoid TS "excessively deep" instantiation errors with ABI
+            const iface = new ethers.utils.Interface(SIMPLE_DEPLOY_ABI);
+            const data = iface.encodeFunctionData('deployContract', [message]);
+
+            return [
+                {
+                    to: contractAddress as `0x${string}`,
+                    data: data as `0x${string}`,
+                    value: ethers.utils.parseEther(deploymentFee).toBigInt(),
+                },
+            ];
+        } catch (err) {
+            console.error("Error encoding tx data:", err);
+            return [];
+        }
+    };
 
     return (
         <div className="max-w-2xl mx-auto p-4 pb-24">
@@ -208,7 +138,6 @@ const SimpleDeploy: React.FC<SimpleDeployProps> = ({ onBack }) => {
                     <label className="block text-sm font-medium text-gray-300 mb-3">Target Network</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
                         {DISPLAY_CHAINS.map((chain) => {
-                            // Extract ID from chainId hex string (e.g. "0x2105") -> number
                             const cid = parseInt(chain.chainId, 16);
                             return (
                                 <button
@@ -252,27 +181,37 @@ const SimpleDeploy: React.FC<SimpleDeployProps> = ({ onBack }) => {
                         <div className="text-sm">
                             <p className="text-cyan-100 font-medium">Fee Estimate</p>
                             <p className="text-cyan-400/60 mt-1">{deploymentFee} ETH + Gas</p>
+                            <p className="text-xs text-gray-500 mt-2">
+                                Smart Wallets & Paymasters supported.
+                            </p>
                         </div>
                     </div>
                 )}
 
-                <button
-                    onClick={handleDeploy}
-                    disabled={isDeploying || !message}
-                    className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${!isDeploying && message
-                        ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:shadow-lg hover:shadow-cyan-500/25'
-                        : 'bg-white/5 text-gray-500 cursor-not-allowed border border-white/5'
-                        }`}
-                >
-                    {isDeploying ? (
-                        <>
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Deploying...
-                        </>
-                    ) : (
-                        <>Deploy Contract <Zap className="w-5 h-5 fill-current" /></>
-                    )}
-                </button>
+                {/* OnchainKit Transaction Component */}
+                {address && selectedChain ? (
+                    <Transaction
+                        calls={getTransactionCalls()}
+                        chainId={selectedChain}
+                        onStatus={handleOnStatus}
+                    >
+                        <TransactionButton
+                            text="Deploy Contract"
+                            className="w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:shadow-lg hover:shadow-cyan-500/25 transition-all"
+                        />
+                        <TransactionStatus>
+                            <TransactionStatusLabel />
+                            <TransactionStatusAction />
+                        </TransactionStatus>
+                    </Transaction>
+                ) : (
+                    <button
+                        disabled
+                        className="w-full py-4 rounded-xl font-bold text-lg bg-white/5 text-gray-500 cursor-not-allowed border border-white/5"
+                    >
+                        Connect Wallet to Deploy
+                    </button>
+                )}
             </div>
         </div>
     );

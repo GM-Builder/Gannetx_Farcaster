@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { WagmiProvider, useAccount, useConnect, useDisconnect } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { base } from 'viem/chains';
 import { wagmiConfig } from '@/config/wagmi';
 import { useFarcasterUser } from '@/hooks/useFarcasterContext';
 import { useDirectProvider } from '@/hooks/useEthersProvider';

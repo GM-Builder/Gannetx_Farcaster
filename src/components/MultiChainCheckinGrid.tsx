@@ -525,16 +525,15 @@ const MultiChainCheckinGrid: React.FC<MultiChainCheckinGridProps> = ({
               transition={{ duration: 0.3, delay: index * 0.05 }}
               whileHover={{ y: -2, scale: 1.02 }}
               className={`
-                rounded-xl overflow-hidden backdrop-blur-xl transition-all duration-300
+                rounded-xl overflow-hidden transition-all duration-300
                 relative
                 ${isCurrentChain
-                  ? 'border border-blue-200 dark:border-blue-400/50 bg-gradient-to-br from-blue-50/60 to-cyan-50/60 dark:from-blue-900/70 dark:to-cyan-900/70 shadow-md'
-                  : 'border border-white/5 bg-[#0B0E14]/60 hover:border-white/10 hover:bg-[#1A1D24] shadow-sm'
+                  ? 'border border-cyan-500/30 bg-[#0B0E14] shadow-[0_0_20px_rgba(6,182,212,0.1)]'
+                  : 'border border-gray-800 bg-[#0B0E14] hover:border-gray-700 shadow-xl'
                 } 
-                ${isSuccess ? 'ring-2 ring-cyan-400/40' : ''}
+                ${isSuccess ? 'ring-2 ring-cyan-400/50' : ''}
               `}
               style={{
-                isolation: 'isolate',
                 minHeight: '200px'
               }}
             >
