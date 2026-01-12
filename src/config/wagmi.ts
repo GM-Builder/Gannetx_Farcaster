@@ -2,11 +2,14 @@
 import { createConfig, http } from 'wagmi';
 import { base, baseSepolia } from 'wagmi/chains';
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
+import { injected, coinbaseWallet } from 'wagmi/connectors';
 
 export const wagmiConfig = createConfig({
   chains: [base, baseSepolia],
   connectors: [
     farcasterMiniApp(),
+    injected(),
+    coinbaseWallet({ appName: 'GannetX' }),
   ],
   transports: {
     [base.id]: http('https://mainnet.base.org'),

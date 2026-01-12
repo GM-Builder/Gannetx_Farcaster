@@ -20,15 +20,16 @@ import Notification from '@/components/Notification';
 import toast from 'react-hot-toast';
 import HeroStatsSection from '@/components/HeroStatsSection';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
-import Settings from '@/components/Settings';
 import AudioPlayer from '@/components/AudioPlayer';
 import SidebarReferralCard from '@/components/SidebarReferralCard';
+import DeployView from '@/components/DeployView';
+import ChatView from '@/components/ChatView';
 
 const queryClient = new QueryClient();
 
 const FarcasterContent = () => {
   const { user, isLoading: userLoading, isReady } = useFarcasterUser();
-  
+
   const { address, isConnected, chainId: wagmiChainId } = useAccount();
   const { connect, connectors, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
@@ -56,8 +57,8 @@ const FarcasterContent = () => {
 
           // Prefer the miniapp connector id
           const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp') ||
-                                    connectors.find(c => c.id === 'farcasterFrame') ||
-                                    connectors.find(c => c.name?.toLowerCase().includes('farcaster'));
+            connectors.find(c => c.id === 'farcasterFrame') ||
+            connectors.find(c => c.name?.toLowerCase().includes('farcaster'));
 
           if (farcasterConnector) {
             console.log('🎯 Auto-connecting with Farcaster connector:', farcasterConnector.name, farcasterConnector.id);
@@ -83,7 +84,7 @@ const FarcasterContent = () => {
   );
   const { data: userRanking, loading: rankingLoading } = useUserRanking(address || null);
 
-  const getAvatarUrl = (addr: string): string => 
+  const getAvatarUrl = (addr: string): string =>
     `https://api.dicebear.com/6.x/identicon/svg?seed=${addr}`;
 
   const handleCheckinSuccess = useCallback((chainId: number, txHash: string): void => {
@@ -115,9 +116,9 @@ const FarcasterContent = () => {
 
   const handleManualConnect = useCallback(() => {
     const farcasterConnector = connectors.find(
-      c => c.id === 'farcasterFrame' || 
-           c.type === 'farcasterFrame' ||
-           c.name?.toLowerCase().includes('farcaster')
+      c => c.id === 'farcasterFrame' ||
+        c.type === 'farcasterFrame' ||
+        c.name?.toLowerCase().includes('farcaster')
     );
 
     if (farcasterConnector) {
@@ -144,17 +145,17 @@ const FarcasterContent = () => {
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20 backdrop-blur-md bg-white/90 dark:bg-gray-900/90">
         <div className="px-3 py-3">
           <div className="flex items-center justify-between">
-            <img 
-              src="/logo.png" 
-              alt="GannetX Logo" 
+            <img
+              src="/logo.png"
+              alt="GannetX Logo"
               className="h-10 w-auto object-contain"
             />
             {user && (
               <div className="flex items-center gap-2">
                 {user.pfpUrl ? (
-                  <img 
-                    src={user.pfpUrl} 
-                    alt={user.username || 'User'} 
+                  <img
+                    src={user.pfpUrl}
+                    alt={user.username || 'User'}
                     className="w-8 h-8 rounded-full border-2 border-cyan-500"
                   />
                 ) : (
@@ -178,7 +179,7 @@ const FarcasterContent = () => {
         txHash={lastTxHash}
         chainId={lastCheckinChainId}
       />
-      
+
       <Notification
         isOpen={showErrorNotification}
         onClose={() => setShowErrorNotification(false)}
@@ -248,18 +249,32 @@ const FarcasterContent = () => {
               </motion.div>
             )}
 
-            {activeTab === 'settings' && (
+            {activeTab === 'deploy' && (
               <motion.div
-                key="settings"
+                key="deploy"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.2 }}
                 className="py-4"
               >
-                <Settings />
+                <DeployView />
               </motion.div>
             )}
+
+            {activeTab === 'chat' && (
+              <motion.div
+                key="chat"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.2 }}
+                className="py-0"
+              >
+                <ChatView />
+              </motion.div>
+            )}
+
 
             {activeTab === 'leaderboard' && (
               <motion.div
@@ -273,7 +288,7 @@ const FarcasterContent = () => {
                 <LeaderboardView address={address || null} />
               </motion.div>
             )}
-            
+
             {activeTab === 'profile' && (
               <motion.div
                 key="profile"
@@ -288,15 +303,15 @@ const FarcasterContent = () => {
                     <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg border border-gray-200 dark:border-gray-700">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="w-16 h-16 rounded-full overflow-hidden ring-4 ring-cyan-400/30">
-                          <img 
-                            src={getAvatarUrl(address)} 
-                            alt="Avatar" 
+                          <img
+                            src={getAvatarUrl(address)}
+                            alt="Avatar"
                             className="w-full h-full"
                           />
                         </div>
                         <div className="flex-1">
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Your Address</p>
-                          <div 
+                          <div
                             onClick={handleCopyAddress}
                             className="flex items-center gap-2 font-mono text-sm bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                           >
@@ -342,7 +357,7 @@ const FarcasterContent = () => {
 
                     <div className="space-y-4">
                       <h3 className="text-base font-bold text-gray-900 dark:text-white">Your Statistics</h3>
-                      
+
                       <HeroStatsSection
                         currentChainId={BASE_CHAIN_ID}
                         currentChainName="Base"
@@ -363,27 +378,27 @@ const FarcasterContent = () => {
                         maxStreak={userStats?.maxStreak || 0}
                       />
 
-                        <SidebarReferralCard
-                          canUseReferral={true}
-                          myReferralsCount={0}
-                          userReferredBy={null}
-                          onCopyLink={() => {
-                            const FARCASTER_UNIVERSAL = 'https://farcaster.xyz/miniapps/9FQxd6AoFiwp/gannetx';
-                            const referralLink = `${FARCASTER_UNIVERSAL}?ref=${address}`;
-                            navigator.clipboard.writeText(referralLink);
-                            toast.success('Referral link copied!');
-                          }}
-                          onCardClick={() => {
-                            // Open the /share page with viewerFid so user can share via Farcaster
-                            if (address) {
-                              router.push(`/share?viewerFid=${address}`);
-                            } else {
-                              toast('Connect wallet to open referral dashboard');
-                            }
-                          }}
-                          onSwitchToBase={() => toast('Already on Base chain!')}
-                          formatAddress={formatAddress}
-                        />
+                      <SidebarReferralCard
+                        canUseReferral={true}
+                        myReferralsCount={0}
+                        userReferredBy={null}
+                        onCopyLink={() => {
+                          const FARCASTER_UNIVERSAL = 'https://farcaster.xyz/miniapps/9FQxd6AoFiwp/gannetx';
+                          const referralLink = `${FARCASTER_UNIVERSAL}?ref=${address}`;
+                          navigator.clipboard.writeText(referralLink);
+                          toast.success('Referral link copied!');
+                        }}
+                        onCardClick={() => {
+                          // Open the /share page with viewerFid so user can share via Farcaster
+                          if (address) {
+                            router.push(`/share?viewerFid=${address}`);
+                          } else {
+                            toast('Connect wallet to open referral dashboard');
+                          }
+                        }}
+                        onSwitchToBase={() => toast('Already on Base chain!')}
+                        formatAddress={formatAddress}
+                      />
                     </div>
                   </>
                 ) : (
@@ -410,8 +425,8 @@ const FarcasterContent = () => {
       {/* Global audio player (non-blocking) */}
       <AudioPlayer />
 
-      <BottomNav 
-        activeTab={activeTab} 
+      <BottomNav
+        activeTab={activeTab}
         onTabChange={setActiveTab}
         hasNotification={!isConnected}
       />
