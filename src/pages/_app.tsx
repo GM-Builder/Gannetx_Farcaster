@@ -8,7 +8,8 @@ import FarcasterMiniAppProvider from '@/components/providers/FarcasterMiniAppPro
 import { SuccessAnimationProvider } from '@/components/SuccessAnimationContext'
 import { OnchainKitProvider } from '@coinbase/onchainkit'
 import { base } from 'viem/chains'
-import '@coinbase/onchainkit/styles.css'
+// styles are now imported in globals.css to fix Vercel build error
+// import '@coinbase/onchainkit/styles.css'
 // sdk is loaded inside FarcasterMiniAppProvider
 
 function FarcasterApp({ Component, pageProps }: AppProps) {

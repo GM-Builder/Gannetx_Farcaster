@@ -303,39 +303,54 @@ const FarcasterContent = () => {
                 {isConnected && address ? (
                   <>
                     {/* Consolidated Profile Card */}
-                    <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-2xl border border-cyan-200 dark:border-cyan-800 shadow-lg p-6 relative overflow-hidden group">
-                      {/* Decorative Background - kept subtle */}
-
+                    <div className="bg-[#0B0E14]/60 backdrop-blur-xl rounded-2xl border border-white/5 shadow-lg p-6 relative overflow-hidden group">
                       <div className="relative z-10">
                         <div className="flex items-center gap-4 mb-6">
                           {/* Avatar Logic */}
-                          <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-white/10 shadow-lg">
+                          <div className="w-20 h-20 rounded-2xl overflow-hidden ring-1 ring-white/10 shadow-2xl relative">
                             {user?.pfpUrl ? (
                               <img src={user.pfpUrl} alt={user.username || 'User'} className="w-full h-full object-cover" />
                             ) : (
                               <img src={getAvatarUrl(address)} alt="Avatar" className="w-full h-full object-cover" />
                             )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#0B0E14]/60 to-transparent" />
                           </div>
 
                           <div className="flex-1 min-w-0">
                             {/* Name Logic */}
-                            <h2 className="text-xl font-bold text-white truncate">
-                              {user?.displayName || user?.username || 'Hunter'}
-                            </h2>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h2 className="text-2xl font-black text-white tracking-tight truncate">
+                                {user?.displayName || user?.username || 'Hunter'}
+                              </h2>
+                              {user?.fid && (
+                                <div className="px-1.5 py-0.5 bg-cyan-500/10 border border-cyan-500/20 rounded text-[10px] font-bold text-cyan-400 uppercase tracking-wider">
+                                  Verified
+                                </div>
+                              )}
+                            </div>
 
-                            {/* Address & ID Logic */}
-                            <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+                            {/* Basename/Username */}
+                            <div className="text-cyan-400/80 text-sm font-medium mb-2">
+                              @{user?.username || 'anonymous'}
+                            </div>
+
+                            {/* Stats/ID Row */}
+                            <div className="flex items-center gap-3">
+                              <div className="px-2 py-1 bg-white/5 rounded-lg border border-white/5 backdrop-blur-sm">
+                                <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mr-2">FID</span>
+                                <span className="text-xs text-gray-200 font-mono">
+                                  {user?.fid || 'N/A'}
+                                </span>
+                              </div>
                               <div
                                 onClick={handleCopyAddress}
-                                className="flex items-center gap-1.5 hover:text-cyan-400 cursor-pointer transition-colors bg-white/5 px-2 py-1 rounded-lg"
+                                className="px-2 py-1 bg-white/5 rounded-lg border border-white/5 backdrop-blur-sm hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all cursor-pointer group/addr"
                               >
-                                <span className="font-mono">{formatAddress(address)}</span>
-                                <FaCopy className="text-[10px]" />
+                                <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mr-2">ADDR</span>
+                                <span className="text-xs text-gray-200 font-mono group-hover/addr:text-cyan-400">
+                                  {formatAddress(address)}
+                                </span>
                               </div>
-                              <span className="text-gray-600">•</span>
-                              <span className="font-medium">
-                                {user?.fid ? `FID: ${user.fid}` : `ID: ${parseInt(address.slice(2, 10), 16) % 100000}`}
-                              </span>
                             </div>
                           </div>
                         </div>
@@ -344,14 +359,14 @@ const FarcasterContent = () => {
                         <div className="flex gap-3">
                           <button
                             onClick={handleCopyAddress}
-                            className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-medium text-gray-300 transition-colors flex items-center justify-center gap-2 border border-white/5"
+                            className="flex-1 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-xl text-sm font-bold text-cyan-400 transition-all flex items-center justify-center gap-2 border border-cyan-500/20 hover:border-cyan-500/40"
                           >
                             <FaCopy className="text-xs" />
                             Copy Address
                           </button>
                           <button
                             onClick={() => disconnect()}
-                            className="flex-1 py-2.5 bg-red-500/10 hover:bg-red-500/20 rounded-xl text-sm font-medium text-red-500 transition-colors flex items-center justify-center gap-2 border border-red-500/20"
+                            className="flex-1 py-3 bg-orange-500/10 hover:bg-orange-500/20 rounded-xl text-sm font-bold text-orange-400 transition-all flex items-center justify-center gap-2 border border-orange-500/20 hover:border-orange-400/40"
                           >
                             <FaSignOutAlt className="text-xs" />
                             Disconnect
