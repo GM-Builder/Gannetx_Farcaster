@@ -20,7 +20,9 @@ import toast from 'react-hot-toast';
 import SuccessAnimation from '@/components/SuccessAnimation';
 import { useSuccessAnimation } from '@/components/SuccessAnimationContext';
 import { useUserStats } from '@/hooks/useSubgraph';
-import { useFarcasterUser } from '@/hooks/useFarcasterContext'; // Import context to get user name
+import { useFarcasterUser } from '@/hooks/useFarcasterContext';
+import { CheckinTransaction } from '@/components/CheckinTransaction';
+import { AddMiniAppButton } from '@/components/AddMiniAppButton';
 
 type ChainCheckinStatus = {
   canCheckin: boolean;
@@ -434,26 +436,31 @@ const MultiChainCheckinGrid: React.FC<MultiChainCheckinGridProps> = ({
           transition={{ duration: 0.45 }}
           className="flex-1"
         >
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center">
-              GM {getDisplayName()}
-            </h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center">
+                GM {getDisplayName()}
+              </h2>
 
-            {/* Refresh Button - Moved here as requested: "posisikan di sebalah kiri sejajar dengan icon refresh" -> interpreted as aligned next to the title text */}
-            <button
-              onClick={checkAllChainsStatus}
-              disabled={isLoading || !isConnected}
-              className="p-2 rounded-lg bg-[#0B0E14] border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-all active:scale-95"
-              title="Refresh Status"
-            >
-              {isLoading ? (
-                <FaSpinner className="animate-spin text-cyan-400" size={14} />
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              )}
-            </button>
+              {/* Refresh Button */}
+              <button
+                onClick={checkAllChainsStatus}
+                disabled={isLoading || !isConnected}
+                className="p-2 rounded-lg bg-[#0B0E14] border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-all active:scale-95"
+                title="Refresh Status"
+              >
+                {isLoading ? (
+                  <FaSpinner className="animate-spin text-cyan-400" size={14} />
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                )}
+              </button>
+            </div>
+
+            {/* Add Mini App Button */}
+            {isConnected && <AddMiniAppButton />}
           </div>
         </motion.div>
       </div>
@@ -546,49 +553,51 @@ const MultiChainCheckinGrid: React.FC<MultiChainCheckinGridProps> = ({
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => {
-                    if (isConnected && canActivateNow && !isProcessing && !isLoading) {
-                      handleCheckin(chain.id);
-                    }
-                  }}
-                  className={`w-full mt-3 py-3 px-4 text-sm font-medium flex items-center justify-center transition-all duration-300 rounded-xl shadow-md ${!isConnected || !canActivateNow || processingChainId !== null || isLoading
-                    ? 'bg-[#0B0E14]/60 border border-white/10 text-gray-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-cyan-500/80 to-blue-600/80 hover:from-cyan-500 hover:to-blue-600 text-white shadow-lg border border-white/5'
-                    }`}
-                  disabled={!isConnected || !canActivateNow || processingChainId !== null || isLoading}
-                >
-                  {isProcessing ? (
-                    <>
-                      <FaSpinner className="animate-spin h-4 w-4 mr-2" />
-                      <span>Sending...</span>
-                    </>
-                  ) : isSuccess ? (
-                    <>
-                      <FaCheckCircle className="h-4 w-4 mr-2" />
-                      <span>GM Sent!</span>
-                    </>
-                  ) : !isConnected ? (
-                    <>
-                      <FaWallet className="h-4 w-4 mr-2" />
-                      <span>Connect Wallet</span>
-                    </>
-                  ) : chainStatus.timeUntilNextCheckin > 0 ? (
-                    <>
-                      <FaClock className="h-4 w-4 mr-2" />
-                      <span>Wait {formatTime(chainStatus.timeUntilNextCheckin)}</span>
-                    </>
-                  ) : canActivateNow ? (
-                    <>
-                      <span>GM on {chain.chainName}</span>
-                    </>
-                  ) : (
-                    <>
-                      <FaCheckCircle className="h-4 w-4 mr-2" />
-                      <span>Already GM'd</span>
-                    </>
-                  )}
-                </button>
+                {/* Use OnchainKit Transaction Component */}
+                {isConnected && canActivateNow ? (
+                  <CheckinTransaction
+                    chainId={chain.id}
+                    contractAddress={getContractAddress(chain.id)}
+                    abi={getChainAbi(chain.id)}
+                    currentTax={BigInt(ethers.utils.parseEther("0.000029").toString())}
+                    chainName={chain.chainName}
+                    onSuccess={(txHash) => {
+                      setSuccessChainId(chain.id);
+                      if (onCheckinSuccess) onCheckinSuccess(chain.id, txHash);
+                    }}
+                    onError={(error) => {
+                      toast.error(error.message || 'Transaction failed');
+                    }}
+                    disabled={!canActivateNow || isLoading}
+                  />
+                ) : (
+                  <button
+                    disabled
+                    className="w-full mt-3 py-3 px-4 text-sm font-medium flex items-center justify-center transition-all duration-300 rounded-xl shadow-md bg-[#0B0E14]/60 border border-white/10 text-gray-400 cursor-not-allowed"
+                  >
+                    {!isConnected ? (
+                      <>
+                        <FaWallet className="h-4 w-4 mr-2" />
+                        <span>Connect Wallet</span>
+                      </>
+                    ) : chainStatus.timeUntilNextCheckin > 0 ? (
+                      <>
+                        <FaClock className="h-4 w-4 mr-2" />
+                        <span>Wait {formatTime(chainStatus.timeUntilNextCheckin)}</span>
+                      </>
+                    ) : isSuccess ? (
+                      <>
+                        <FaCheckCircle className="h-4 w-4 mr-2" />
+                        <span>GM Sent!</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaCheckCircle className="h-4 w-4 mr-2" />
+                        <span>Already GM'd</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
               {successAnimationData.visible &&
                 successAnimationData.chainId === chain.id && (
