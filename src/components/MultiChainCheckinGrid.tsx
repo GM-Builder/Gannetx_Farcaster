@@ -20,8 +20,6 @@ import toast from 'react-hot-toast';
 import SuccessAnimation from '@/components/SuccessAnimation';
 import { useSuccessAnimation } from '@/components/SuccessAnimationContext';
 import { useUserStats } from '@/hooks/useSubgraph';
-import sdk from '@farcaster/miniapp-sdk';
-import { useFarcasterMiniApp } from '@/components/providers/FarcasterMiniAppProvider';
 import { useFarcasterUser } from '@/hooks/useFarcasterContext'; // Import context to get user name
 
 type ChainCheckinStatus = {
@@ -84,7 +82,6 @@ const MultiChainCheckinGrid: React.FC<MultiChainCheckinGridProps> = ({
   });
 
   const { data: userStats } = useUserStats(address || undefined);
-  const miniApp = useFarcasterMiniApp();
   const { user } = useFarcasterUser(); // Get Farcaster user info
 
   // Animation trigger effect
@@ -236,25 +233,13 @@ const MultiChainCheckinGrid: React.FC<MultiChainCheckinGridProps> = ({
       setProcessingChainId(chainId);
       console.log(`🚀 Starting checkin on chain ${chainId}`);
 
+      // Validate wallet is connected
+      if (!address) throw new Error("Wallet not connected. Please connect your wallet first.");
+
       const provider = new ethers.providers.Web3Provider((window as any).ethereum);
       if (!provider) throw new Error("Ethereum provider not found.");
 
-      console.log("🎯 Requesting QuickAuth token...");
-      const { token } = await sdk.quickAuth.getToken();
-
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      console.log("✅ QuickAuth token payload:", payload);
-
-      const res = await fetch(
-        `https://api.farcaster.xyz/fc/primary-address?fid=${payload.sub}&protocol=ethereum`
-      );
-      if (!res.ok) throw new Error("Failed to resolve primary address from Farcaster API");
-
-      const { result } = await res.json();
-      const address = result?.address?.address;
-      if (!address) throw new Error("Could not resolve Ethereum address for this user");
-
-      console.log("✅ Resolved wallet address:", address);
+      console.log("✅ Using connected wallet address:", address);
 
       const contractAddress = getContractAddress(chainId);
       const abi = getChainAbi(chainId);
@@ -301,19 +286,6 @@ const MultiChainCheckinGrid: React.FC<MultiChainCheckinGridProps> = ({
         isFarcasterProvider = false;
       }
 
-      try {
-        const caip2 = `eip155:${chainId}`;
-        if (isFarcasterProvider && !miniApp.supportsChain(caip2)) {
-          const chainName = (SUPPORTED_CHAINS as any)[chainId]?.chainName || `Chain ${chainId}`;
-          const msg = `Farcaster in-app wallet does not support ${chainName} (chainId ${chainId}). Use an external wallet or contact Farcaster.`;
-          console.warn('⚠️ Preflight fail:', msg);
-          toast.error(msg);
-          setProcessingChainId(null);
-          return;
-        }
-      } catch (miniErr) {
-        console.warn('⚠️ MiniApp preflight check failed or not available:', miniErr);
-      }
 
       try {
         const currentChainIdHex = await ethProvider.request({ method: 'eth_chainId' });
