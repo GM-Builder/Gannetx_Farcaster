@@ -19,10 +19,15 @@ function FarcasterApp({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        <title>GannetX Farcaster</title>
-        <meta name="description" content="GannetX on Farcaster" />
+        <title>GannetX</title>
+        <meta name="description" content="GannetX on BaseApp" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <link rel="icon" href="/favicon.ico" />
+        {/* Load OnchainKit styles from CDN to avoid Tailwind v3 vs v4 build conflicts */}
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@coinbase/onchainkit@1.1.2/dist/assets/style.css"
+        />
       </Head>
 
       {/* Initialize miniapp SDK in background without blocking rendering */}
