@@ -8,6 +8,7 @@ import GannetXABI from '@/abis/GannetXInteractiveChat.json';
 import { ethers } from 'ethers';
 import { BASE_CHAIN_ID, GANNETX_CHAT_CONTRACT_ADDRESS, BASE_RPC } from '@/utils/constants';
 import toast from 'react-hot-toast';
+import { Name } from '@coinbase/onchainkit/identity';
 
 const CONTRACT_ADDRESS = GANNETX_CHAT_CONTRACT_ADDRESS;
 const CHECKIN_FEE = ethers.utils.parseEther('0.000001');
@@ -187,7 +188,10 @@ const ChatView: React.FC = () => {
                         const isOwn = isOwnMessage(m.user);
                         return (
                             <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
-                                <div className="text-[10px] text-gray-500 mb-1 px-1">{isOwn ? 'You' : shortAddr(m.user)}</div>
+                                <div className="text-[10px] text-gray-500 mb-1 px-1 flex items-center gap-1">
+                                    <Name address={m.user as `0x${string}`} className="text-gray-500" />
+                                    {isOwn && <span>(you)</span>}
+                                </div>
                                 <div
                                     className={`px-4 py-2 rounded-2xl max-w-[80%] break-words ${isOwn ? 'bg-cyan-600 text-white rounded-tr-sm' : 'text-white rounded-tl-sm'}`}
                                     style={!isOwn ? { background: colorForAddress(m.user) } : {}}
